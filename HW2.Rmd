@@ -345,8 +345,164 @@ Our objective is to fit a prediction model to classify players according to thei
 
 ### a) Consider only the variables that have approximately normal distribution and test the assumption of homogenity of variance. (1p)
 
+The variables that show an approximately normal distribution are MIN, FG, TwoPt.FG and PF, since their histogram is bell-shaped, unlike the rest of the variables, which are clearly not normally distributed. 
+
+The Shapiro-Wilk normality test rejects the null hypothesis for all variables except:
+  - MIN, where its p-value is 0.1948 
+  - TwoPt.FG, where its p-value is 0.1178. 
+  - PF, where its p-value is 0.3919
+
+FG does not pass the Shapiro-Wilk normality test, since its p-value is 0.01795. However, since it is not as close to zero as it is the case for the other variables, and its histogram is bell-shaped, we will consider it for this analysis. (???)
+
+```{r}
+
+### Assumption 1: Normality ####
+## Checking histogram, qqplots and shapiro Willk's test results
+
+for (i in 2:16){
+  print(colnames(df2)[i])
+  print(shapiro.test(df2[,i]))
+qqnorm(df2[,i],main=colnames(df2)[i])
+hist(df2[,i], main=colnames(df2)[i])
+}
+```
+Since we will work only with the approximately normal variables, the variables we will use for this analysis are: MIN, FG, TwoPt.FG and PF.  
+
+```{r}
+## Dataframe for DA
+dfdisc <- df2[,c(1:4,11)]
+```
+
+In order to test the homogeneity of variance for the different positions between the normal variables, we will apply Box's M test for testing variance covariance matrices.
+
+Since the p-value we obtain is significant (0.00225), the null hypothesis of homogeneity of variances is rejected.
+
+```{r}
+##### Assumption 2: Homogenity of Variance ####
+## Box's M test for testing variance covariance matrices
+install.packages("biotools")
+library(biotools)
+?boxM
+
+boxM(dfdisc[,2:5],dfdisc$Position)
+
+```
+```{r}
+##### Correlation ###
+cor(dfdisc[,2:5])
+plot(dfdisc[,2:5])
+```
+
 ###  b) Fit the proper discriminant model on the data set and explain why you use it. (0.5p)
+
+There are 3 different types of discriminant models:
+  - LDA: assumes normality of the variables and homogeneity of variances.
+  - QDA: assumes normality of the variables but not homogeneity of variances.
+  - Naive Bayes: assumes independent predictors.
+  
+The variables we are working with can be considered normal but do not have a homogeneity of variances.
+Besides, they cannot be considered to be independent, as some of the variables show significant correlations, such as FG and TwoPt.FG (0.78).
+
+Therefore, the proper model to use on this data set is QDA.
+
+
+In order to see which model best classifies the player's position, we used a Stepwise Classification to see which variables are needed. 
+
+The result of this method shows how the model obtains the best correctness rate by using only 2 out of the 4 variables:
+TwoPt.FG and PF. 
+
+```{r}
+########################################
+#### Quadratic Discriminant Analysis ###
+########################################
+
+# Full model
+# qda.fit<-qda (Position ~ MIN + FG + TwoPt.FG + PF , data = dfdisc)
+# qda.fit
+
+##Stepwise Classification
+library(klaR)
+set.seed(1234)
+posstep<-stepclass(dfdisc[,2:5],dfdisc$Position,method="qda",direction="backward", criterion="CR") 
+posstep
+
+summary(posstep)
+posstep$process
+posstep$model
+posstep$result.pm
+```
+
 
 ### c) Make a table cross classifying real and predicted values and interpret correct classification rates. (1p)
 
+```{r}
+### QDA Function###
+qda.fit<-qda (Position ~ TwoPt.FG + PF , data = dfdisc)
+qda.fit$prior
+
+# Group predictions
+pospred<-predict(qda.fit)
+names(pospred)
+
+#Class and posterior prob. predictions 
+pospred$class
+pospred$posterior
+
+
+#Contingency Table
+tab2<-table(dfdisc$Position,pospred$class) #columns are predictions
+tab2
+
+# CCR
+classrate<-sum(diag(tab2))/sum(tab2)
+classrate
+
+#CCR among groups
+diag(prop.table(tab2, 1))
+
+#Total CCR
+sum(diag(prop.table(tab2)))
+
+#Prediction accuracy p1^2+p^2
+qda.fit$prior[1]^2 + qda.fit$prior[2]^2+qda.fit$prior[3]^2
+
+#Comparison 
+comp<-cbind(dfdisc$Position,pospred$class)
+comp
+```
+
+
 ### d) Test whether the classification is done by chance using Q statistic. (1p)
+
+We can test the importance of the discriminant function by using the Q statistic and testing it as a chi-squared of k-1 degrees of freedom and a significance of alpha. 
+
+The null hypothesis states that the discrimination characteristics of the discriminant function is not important.
+
+Since in our case we obtained a p-value greater than the significance level (0.4796523), we cannot reject H0 and the classification performance could be explained by random guessing. (???)
+
+
+```{r}
+### d) Q statistic: test whether the classification is done by chance ###
+
+# Confusion matrix 'tab2' has been computed above
+
+# Total number of observations
+n <- sum(tab2)
+
+# Number of classes (number of rows in the confusion matrix)
+k <- nrow(tab2)
+
+# Number of correctly classified observations (sum of the diagonal)
+ntilde <- sum(diag(tab2))
+
+# Q statistic as defined in the lecture notes:
+# Q = ((n - ntilde)^2) / (n * (k - 1))
+Q <- (n - ntilde)^2 / (n * (k - 1))
+Q
+
+# p-value using chi-squared distribution with (k - 1) degrees of freedom
+pvalue <- 1 - pchisq(Q, df = k - 1)
+pvalue
+
+```
+
