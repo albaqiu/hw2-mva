@@ -1,29 +1,352 @@
 ---
-title: "HW2"
-output: html_document
-date: "2025-12-08"
+title: "HW2_MVA"
+output:
+  pdf_document: default
+  html_document: default
+date: "2025-12-14"
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+## Clean environment and load data
+
+```{r}
+if(!is.null(dev.list())) dev.off()
+rm(list=ls())
 ```
 
-## R Markdown
+## 1. Exploratory data analysis
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+### Import the data set to R correctly and assign player names as rownames of the data frame.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r}
+library(readxl)
+data <- read_excel("data_Eurobasket_2025.xlsx")
+head(data)
 
-```{r cars}
-summary(cars)
+df <- as.data.frame(data) # Convert to a regular data frame
+rownames(df) <- df$PLAYER # Set the PLAYER column as row names
+df <- df[, -which(names(df) == "PLAYER")] # We remove the PLAYER column (redundant)
+
+# Rename variables with numbers
+names(df)[names(df) == "2PT FG"] <- "TwoPt.FG"
+names(df)[names(df) == "3PT FG"] <- "ThreePt.FG"
+
+head(df)
 ```
 
-## Including Plots
+The structure of the dataset was checked using the `str()` function. Categorical variables (`Team` and `Position`) were converted to factors because they represent qualitative categories, while all other variables remained numerical.
 
-You can also embed plots, for example:
+```{r}
+str(df)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+# Convert categorical variables to factors
+df$Team <- as.factor(df$Team)
+df$Position <- as.factor(df$Position)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+### Dataframe using variables “Position”, “MIN”, “FG”, “2PT.FG”, “3PT.FG”, “FT”, “OREB”, “DREB”, “REB”, “AST”, “PF”, “TO”,“STL”,“BLK”,“EFF” and “PTS”
+
+```{r}
+# Select only the required variables
+df2 <- df[, c("Position", "MIN", "FG", "TwoPt.FG", "ThreePt.FG", "FT", "OREB", "DREB", "REB", "AST", "PF", "TO", "STL", "BLK", "EFF", "PTS")]
+
+head(df2)
+
+#Correlation
+cor_matrix <- cor(df2[, -1]) 
+round(cor_matrix, 2) # correlation matrix
+
+library(corrplot)
+corrplot(cor_matrix, method = "color", type = "upper",
+         addCoef.col = "black",     
+         tl.col = "black",          
+         tl.cex = 0.8,              
+         number.cex = 0.7)
+```
+
+## 2. Hierarchical Clustering
+
+Apply a hierarchical clustering on previously created data frame that includes variables “Position”, “MIN”, “FG”, “2PT.FG”, “3PT.FG”, “FT”, “OREB”, “DREB”, “REB”, “AST”, “PF”, “TO”, “STL”, “BLK”, “EFF” and “PTS”. Scale it if it is required.
+
+```{r}
+## Dataframe for clustering
+dfclust <- df2
+
+## Scale numerical data
+num_vars <- df2[, sapply(dfclust, is.numeric)] # all variables except "Position"
+
+dfscaled <- scale(num_vars)
+dfscaled <- as.data.frame(dfscaled) # convert the scaled data to a dataframe
+d <- dist(dfscaled, method = "euclidean") # apply distance matrix on the scaled dataframe
+```
+
+
+### a) Decide the best method to draw dendrogram.(0.5p)
+
+The hierarchical clustering analysis is performed on the numerical variables after standardising them with the \emph{scale()} function. This ensures that all variables contribute equally to the computation of distances. An Euclidean distance matrix is then obtained using the \emph{dist()} function applied to the scaled dataset.
+
+The clustering structure is produced with the \emph{hclust()} function, and different linkage criteria are considered in order to compare their performance. 
+
+The resulting dendrograms allow a first inspection of the potential number of clusters. Using the \emph{rect.hclust()} function, possible partitions into $2$, $3$, $4$ and $5$ clusters are highlighted. 
+
+- **Complete method:** Shows moderately well-defined groups, but some clusters merge at very different heights, producing unbalanced partitions and making the choice of k less clear.
+- **Ward method:** Produces the most compact and balanced clusters, with clear separation and smooth increases in fusion height, making it the most interpretable and stable method.
+- **Single method:* Suffers from strong chaining: observations join sequentially at very low heights, resulting in one elongated cluster and making meaningful grouping impossible.
+- **Average method:* Offers a more regular structure than complete or single, but still generates some uneven merges and less compact groups compared with Ward.
+- **Centroid method:* Displays unstable merges and several inversions in structure, leading to distorted cluster shapes and weaker interpretability.
+
+```{r}
+## Set margins 
+par(xpd = TRUE, mar = c(5, 4, 4, 8))
+
+## 1. Complete linkage method
+fit1 <- hclust(d, method = "complete")
+plot(fit1, main = "Dendrogram of Complete Linkage")
+
+rect.hclust(fit1, k = 2, border = "orange")
+rect.hclust(fit1, k = 3, border = "blue")
+rect.hclust(fit1, k = 4, border = "red")
+rect.hclust(fit1, k = 5, border = "green")
+
+legend("topright", inset = c(-0.25, 0),
+       legend = c("2 clusters", "3 clusters", "4 clusters", "5 clusters"),
+       col = c("orange", "blue", "red", "green"),
+       lwd = 2, cex = 0.8, bg = "white")
+
+## 2. Ward method
+fit2 <- hclust(d, method = "ward.D2")
+plot(fit2, main = "Dendrogram of Ward Method")
+
+rect.hclust(fit2, k = 2, border = "orange")
+rect.hclust(fit2, k = 3, border = "blue")
+rect.hclust(fit2, k = 4, border = "red")
+rect.hclust(fit2, k = 5, border = "green")
+
+legend("topright", inset = c(-0.25, 0),
+       legend = c("2 clusters", "3 clusters", "4 clusters", "5 clusters"),
+       col = c("orange", "blue", "red", "green"),
+       lwd = 2, cex = 0.8, bg = "white")
+
+## 3. Single linkage method
+fit3 <- hclust(d, method = "single")
+plot(fit3, main = "Dendrogram of Single Linkage")
+
+rect.hclust(fit3, k = 2, border = "orange")
+rect.hclust(fit3, k = 3, border = "blue")
+rect.hclust(fit3, k = 4, border = "red")
+rect.hclust(fit3, k = 5, border = "green")
+
+legend("topright", inset = c(-0.25, 0),
+       legend = c("2 clusters", "3 clusters", "4 clusters", "5 clusters"),
+       col = c("orange", "blue", "red", "green"),
+       lwd = 2, cex = 0.8, bg = "white")
+
+## 4. Average linkage method
+fit4 <- hclust(d, method = "average")
+plot(fit4, main = "Dendrogram of Average Linkage")
+
+rect.hclust(fit4, k = 2, border = "orange")
+rect.hclust(fit4, k = 3, border = "blue")
+rect.hclust(fit4, k = 4, border = "red")
+rect.hclust(fit4, k = 5, border = "green")
+
+legend("topright", inset = c(-0.25, 0),
+       legend = c("2 clusters", "3 clusters", "4 clusters", "5 clusters"),
+       col = c("orange", "blue", "red", "green"),
+       lwd = 2, cex = 0.8, bg = "white")
+
+## 5. Centroid linkage method
+fit5 <- hclust(d, method = "centroid")
+plot(fit5, main = "Dendrogram of Centroid Linkage")
+
+rect.hclust(fit5, k = 2, border = "orange")
+rect.hclust(fit5, k = 3, border = "blue")
+rect.hclust(fit5, k = 4, border = "red")
+rect.hclust(fit5, k = 5, border = "green")
+
+legend("topright", inset = c(-0.25, 0),
+       legend = c("2 clusters", "3 clusters", "4 clusters", "5 clusters"),
+       col = c("orange", "blue", "red", "green"),
+       lwd = 2, cex = 0.8, bg = "white")
+
+par(xpd = FALSE, mar = c(5, 4, 4, 2))
+```
+
+
+### b) How many clusters do you think exist in the data considering the dendrogram? (0.5p)
+
+Based on the Ward dendrogram, the most reasonable choice is **$3$ clusters**. This cut corresponds to a height where the fusion jumps noticeably, separating the tree into three large and well-balanced groups. Cutting at $4$ or $5$ clusters would split already compact subgroups, whereas cutting at $2$ would merge distinct branches. Therefore, the dendrogram structure suggests that the data forms $3$ clusters.
+
+
+## 3. K means clustering
+
+### a) Find the optimum number of clusters. (0.5p)
+
+A non-hierarchical clustering analysis is performed using several criteria to determine the optimum number of clusters. Three different methods are considered: the **TWSS Elbow Graph**, the **Pseudo F Index** and the **Silhouette Index**.
+
+#### I) TWSS Elbow Graph
+
+The Total Within-Cluster Sum of Squares (TWSS) has been computed for different values of k using the **k-means algorithm**, in order to identify an appropriate number of clusters through the **Elbow method**.
+
+The TWSS curve shows a clear elbow at $k=4$, where the reduction in within-cluster variability becomes noticeably less steep.
+Moreover, the ratio between the between-cluster sum of squares and the total sum of squares increases from $0.437$ for $k=3$ to $0.544$ for $k=4$, indicating a  better separation between groups. Therefore, based on the Elbow method and the explained separation, $k=4$ is selected as the optimal number of clusters.
+
+```{r}
+## Applying k-means algorithm for different number of clusters 
+set.seed(123)
+aux <- c()
+for (i in 2:6){
+  k <- kmeans(dfscaled, centers=i, nstart=25)
+  aux[i-1] <- k$tot.withinss 
+}
+plot(2:6, aux, xlab="Number of Clusters", ylab="TWSS", type="l", main="TWSS vs. number of clusters")
+# Optimum point: k=4
+
+# k=3
+k3 <- kmeans(dfscaled, centers = 3, nstart = 25) # 3 number of clusters
+
+## Sum of Squares
+k3$withinss
+k3$totss
+k3$tot.withinss # total deviation
+k3$betweenss + k3$tot.withinss # total variation of the dataset
+k3$betweenss/k3$totss # 0.437 separation between clusters
+
+# k=4
+k4 <- kmeans(dfscaled, centers = 4, nstart = 25) # 4 number of clusters 
+
+## Sum of Squares 
+k4$withinss 
+k4$totss 
+k4$tot.withinss # total deviation
+k4$betweenss + k4$tot.withinss # total variation of the dataset
+k4$betweenss/k4$totss # 0.544 greater separation between clusters
+```
+
+#### II) Pseudo F Index
+
+The **Pseudo-F Index** has been computed for different values of k in order to evaluate the separation between clusters obtained with k-means algorithm. As shown in the figure, the index reaches its maximum value at $k=4$ and then decreases steadily as k increases. 
+
+```{r}
+# Pseudo F index = BSS*(n-k)/WSS*(k-1)
+set.seed(123)
+aux <- c()
+for (i in 2:10){
+  k <- kmeans(dfscaled, centers=i, nstart=25)
+  aux[i-1] <- ((k$betweenss)*(nrow(dfscaled)-i))/((k$tot.withinss)*(i-1))
+}
+plot(2:10, aux, xlab="Number of Clusters", ylab="Pseudo-F", type="l", main="Pseudo F Index")
+# max Pseudo F: 4 clusters
+```
+
+#### III) Silhoutte Index
+
+Finally, the **Silhouette Index** is computed using both the \emph{silhouette()} function from the \emph{cluster} package and the \emph{fastkmed()} function from the \emph{kmed} package.
+
+The Silhouette Index yields similar results for $k=3$ and $k=4$, with average widths of $0.22$ and $0.21$, respectively. Although $k=3$ achieves a slightly higher silhouette value, the difference is marginal and both solutions exhibit comparable cohesion. Moreover, the silhouette structure of $k=4$ does not indicate poorly defined clusters, and remains consistent with the separation patterns observed in hierarchical clustering.
+Therefore, the Silhouette Index suggests that both $k=3$ and $k=4$ are acceptable, but does not provide strong evidence against choosing $k=4$ as indicated by the TWSS and Pseudo-F criteria.
+
+```{r}
+## A) Silhouette function from cluster library
+library(cluster)
+
+# k=3
+si <- silhouette(k3$cluster, d)
+plot(si) # max silhouette index: 3rd cluster
+
+# k=4
+si <- silhouette(k4$cluster, d)
+plot(si) # max silhouette index: 4th cluster
+
+
+## B) Silhouette function from kmed library
+library(kmed)
+
+# k=3
+set.seed(123)
+res <- fastkmed(d, 3) 
+silhouette <- sil(d, res$medoid, res$cluster)
+silhouette$result
+silhouette$plot 
+# k=3 higher silhouette value
+
+# k=4
+set.seed(123)
+res <- fastkmed(d, 4)
+silhouette <- sil(d, res$medoid, res$cluster)
+silhouette$result
+silhouette$plot
+# k=3 higher silhouette value
+```
+
+To sum up, although the Silhouette Index shows a slightly higher average score for $k=3$, both the TWSS Elbow method and the Pseudo-F Index support $k=4$ as the most meaningful partition. The four-cluster solution provides a better separation between groups ($BSS/TSS=0.544$), a clearer structural interpretation, and it is fully consistent with the hierarchical clustering results. For these reasons, $k=4$ is selected as the optimal number of clusters.
+
+
+### b) Apply k-means clustering using the number of clusters that you decided. Interpret each cluster by making a descriptive statistics table. (1.5p)
+
+- **Cluster 1:** Low-impact perimeter players
+This group gathers players with moderate playing time ($≈15$ minutes) and overall modest statistical contribution. Their scoring efficiency is average across FG, 2PT and 3PT percentages, and they provide limited rebounding ($≈2$ REB) and moderate assists ($≈1.5$ AST).
+They may represent role players, typically perimeter players who contribute in short bursts without being primary scoring options.
+
+- **Cluster 2:** Efficient specialists with limited minutes
+Players in this cluster show the best shooting percentages in the dataset, especially 2PT FG ($≈80%$), but they play the fewest minutes ($≈10$).
+Their statistical output is low in totals due to reduced court time, but their efficiency is notably high relative to minutes ($EFF ≈ 4.8$).
+This group may corresponds to situational players or bench specialists, particularly big men and finishing forwards, who produce efficiently in very short rotations.
+
+- **Cluster 3:** Dominant high-usage players (3 players: all Forwards)
+This small but meaningful cluster contains players with very high minutes ($≈30$) and elite production across all categories: $REB ≈ 9.6$, $AST ≈ 4.3$, $EFF ≈ 28$ and $PTS ≈ 24$.
+They are the star players of the tournament, acting as primary scoring options and offensive hubs for their teams.
+The fact that only three players fall into this category reflects how statistically exceptional they are compared with the rest of the dataset.
+
+- **Cluster 4:** Balanced starters with strong contribution
+Players in this cluster have high playing time ($≈24$ minutes) and solid all-around contributions: 3PT FG highest among clusters ($≈43%$), $AST ≈ 3$, $PTS ≈ 11$ and $EFF ≈ 13$.
+This group represents core rotation starters, typically perimeter players and forwards who contribute in scoring, playmaking, and defense. They are not as dominant as Cluster 3 but form the backbone of competitive teams.
+
+```{r}
+# Apply k-means with the selected number of clusters
+set.seed(123)
+k4 <- kmeans(dfscaled, centers = 4, nstart = 25)
+
+# Add cluster label to original unscaled data
+dfclust$Cluster <- as.factor(k4$cluster)
+
+# Descriptive statistics per cluster
+library(dplyr)
+
+cluster_summary <- dfclust[, -1] %>%
+  group_by(Cluster) %>%
+  summarise(across(everything(), mean, na.rm = TRUE))
+cluster_summary
+
+# Clusters based on factor Position
+table(dfclust$Cluster, dfclust$Position)
+```
+
+
+## 4. Hierarchical Clustering based on PCA and MCA
+
+### a) Use HCPC() function and apply a PCA based clustering on the pca output that you had from HW1. Decide on number of clusters. (0.5)
+
+### b) Interpret each cluster by using profiling.(1p)
+
+### c) Use HCPC() function and apply a MCA based clustering on the multiple correspondence analysis output that you had from HW1.Decide on number of clusters. (0.5p)
+
+### d) Interpret each cluster by using profiling. (1p)
+
+
+
+## 5. Conclusion
+
+Compare the results of clustering methods that you applied and make a final comment on which clustering method would you prefer and why. (0.5p)
+
+
+## 6. Discriminant Analysis
+
+Our objective is to fit a prediction model to classify players according to their positions.
+
+### a) Consider only the variables that have approximately normal distribution and test the assumption of homogenity of variance. (1p)
+
+###  b) Fit the proper discriminant model on the data set and explain why you use it. (0.5p)
+
+### c) Make a table cross classifying real and predicted values and interpret correct classification rates. (1p)
+
+### d) Test whether the classification is done by chance using Q statistic. (1p)
