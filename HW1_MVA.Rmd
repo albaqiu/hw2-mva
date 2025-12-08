@@ -1,0 +1,454 @@
+---
+title: "HW1_MVA"
+output:
+  pdf_document: default
+  html_document: default
+date: "2025-10-26"
+---
+
+## Clean environment and load data
+
+```{r}
+if(!is.null(dev.list())) dev.off()
+rm(list=ls())
+```
+
+## 1. First do the exploratory data analysis
+
+### a) Import the data set to R correctly and assign player names as rownames of the data frame (0.5p).
+
+```{r}
+library(readxl)
+data <- read_excel("data_Eurobasket_2025.xlsx")
+head(data)
+
+df <- as.data.frame(data) # Convert to a regular data frame
+rownames(df) <- df$PLAYER # Set the PLAYER column as row names
+df <- df[, -which(names(df) == "PLAYER")] # We remove the PLAYER column (redundant)
+
+head(df)
+```
+
+### b) Check the structure of the data and assign correct type to each variable considering whether it is a categorical or numerical variable. (0.5p)
+
+The structure of the dataset was checked using the str() function. Categorical variables (Team and Position) were converted to factors because they represent qualitative categories, while all other variables remained numerical.
+
+```{r}
+str(df)
+
+# Convert categorical variables to factors
+df$Team <- as.factor(df$Team)
+df$Position <- as.factor(df$Position)
+
+str(df) #check again
+```
+
+### c) Create dataframe only using variables “Position”, “MIN”, “FG”, “2PT.FG”, “3PT.FG”, “FT”, “OREB”, “DREB”, “REB”, “AST”, “PF”, “TO”,“STL”,“BLK”,“EFF” and “PTS”. Check the correlations between numerical variables and summarize your findings. (0.5p)
+
+After obtaining the correlation matrix, we can observe some *strong correlations* between some variables, for example: - EFF is strongly correlated with PTS (points, r=0.95), REB (total rebounds, r=0.90), and DREB (defensive rebounds, r=0.91), suggesting that players who score more and rebound more tend to have higher overall efficiency. - REB is highly correlated to OREB (r=0.87) and DREB (r=0.97), as expected, because total rebounds = offensive + defensive rebounds. - MIN (minutes played) correlates positively with EFF (r=0.84) and PTS (r=0.85), indicating that players who spend more time on the field tend to contribute more statistically.
+
+We also observe *moderate correlations*, for example: - AST (assists) is moderately correlated with EFF (r=0.67) and PTS (r=0.63). - 3PT.FG (3pt Field Goal) and FT and PTS (around 0.5).
+
+And lastly, *weak correlations*: - 2PT.FG shows low correlations with most other variables, and slightly negative correlation with 3PT.FG, which could be because players specialize in inside or outside shooting. - Defensive metrics like STL (steals) and BLK (blocks) show weak correlations with scoring variables, could be because they measure different aspects of performance, defensive or offensive skills.
+
+```{r}
+# Select only the required variables
+df_sel <- df[, c("Position", "MIN", "FG", "2PT FG", "3PT FG", "FT", "OREB", "DREB", "REB", "AST", "PF", "TO", "STL", "BLK", "EFF", "PTS")]
+#we eliminated +/- to exclude it from analysis
+
+head(df_sel)
+
+#Correlation
+cor_matrix <- cor(df_sel[, -1]) #we exclude first variable because it's categorical
+round(cor_matrix, 2) # correlation matrix
+
+library(corrplot)
+corrplot(cor_matrix, method = "color", type = "upper",
+         addCoef.col = "black",     
+         tl.col = "black",          
+         tl.cex = 0.8,              
+         number.cex = 0.7)
+```
+
+## 2. Application of PCA
+
+### a) Apply PCA on the created data frame by using PCA() function in FactoMineR package and taking the variables “Position” and and “EEF” as supplemantary variables. (0,5p)
+
+```{r}
+library(FactoMineR)
+res.pca <- PCA(df_sel, quali.sup = 1, quanti.sup = 14, graph = TRUE, scale.unit = TRUE) # PCA with position and EEF as supplementary variables
+
+```
+
+### b) How many components should be extracted? Decide on the number of components considering eigenvalues. (0,5p)
+
+To decide the number of components to extract based on eigenvalues, we use Kaiser's rule: keep the components with eigenvalues greater than 1. Following this rule, we keep components 1, 2 and 3.
+
+```{r}
+res.pca$eig 
+barplot(res.pca$eig[, 1],names.arg = 1:nrow(res.pca$eig), main = "Scree Plot of Eigenvalues", xlab = "Principal Component", ylab = "Eigenvalue", col = "blue")
+abline(h = 1, col = "red")
+
+```
+
+### c) Interpret variable plots. How can each dimension be named? Use plot.PCA() function to show correlations between variables and the extracted dimensions. (For the variables you should use the argument choix = “var”). Plot all the extracted dimensions changing argument “axes”. (1p)
+
+Dim 1 (49.9% of variance) is influenced by variables like PTS, EFF, REB, DREB, OREB, MIN, and AST. This axis represents overall player performance and the players who score more (PTS), rebound more (REB, DREB, OREB), and play longer (MIN), so it's about the offensive performance. It can be named *"overall performance"*.
+
+Dim 2 (17.9% of variance) is mainly influenced by 2PT FG, BLK, and partially OREB (positive side), while 3PT FG, FT and AST influence negatively. This dimension represents playing style, separating players who are more with strong 2PT, rebounds, and blocks, this is, inside-oriented players, from players with high 3PT FG, FT, and assists (perimeter players). It can be named *"playing style"*.
+
+Dim 3 (8.9% of variance) is influenced by variables like FT, 3PT FG and PF, and also in the center or slightly negative part by REB, DREB, AST, TO. Specifically, FT and 3PT FG are related to scoring, PF (personal fouls) increase for players who play aggressively. And REB, DREB, AST, TO are more about control of the ball. So Dim 3 distinguishes players who are good at shooting but foul a lot, from players who are more about ball control, passing, and rebounding. It can be named *"self-oriented players vs. team-oriented players"*.
+
+```{r}
+plot.PCA(res.pca, choix = "var", axes = c(1, 2))
+plot.PCA(res.pca, choix = "var", axes = c(1, 3))
+plot.PCA(res.pca, choix = "var", axes = c(2, 3))
+```
+
+### d) Show individual pilots for the extracted dimensions changing argument choix=“ind” in plot.PCA() function. Interpret the individual plots. (1p)
+
+The individual plots show how players are distributed according to the PCA dimensions.
+
+In the Dim 1–Dim 2 map, the first dimension separates players by their overall performance, so the players who score more and are more efficient are on the right, while the second dimension distinguishes playing style, contrasting inside-oriented players (forwards/centers) with perimeter-oriented players (guards). For example, Giannis Antetokounmpo has high Dim 1 and high Dim 2, indicating a high-performance, inside-oriented player. In contrast, Dennis Schröder appears in the lower right region of the map, meaning he has a strong overall performance but is more perimeter-oriented.
+
+In the Dim 1–Dim 3 map, Dim 1 still represents overall player performance, while Dim 3 distinguishes the difference between players who foul and make more shoots, and players who play supportive roles, contributing through assists and rebounds. For example, Giannis Antetokounmpo combines high Dim 1 and low Dim 3, meaning he is a high performance player (as we have seen in the previous plot), and he is more team-oriented rather than a pure scorer. In contrast, Daniel Theis, with high Dim 1 and high Dim 3, he is a pure scorer but instead of a team-oriented player, he plays more offensively and aggressively.
+
+In the Dim 2–Dim 3 map, both dimensions still represent what we analyzed in the previous exercise, Dim 2 represents playing style (inside vs. perimeter), and Dim 3 expresses offensive aggressiveness vs. playmaking. This plot focuses on differentiating how players achieve their performance. For example, Giannis Antetokounmpo, with high Dim 2 and low Dim 3, is an inside player who does playmaking, and Sasu Salin (low Dim 2 and high Dim 3) is a perimeter-oriented player, and he also shows offensive aggressiveness rather than facilitating the play for the team.
+
+```{r}
+plot.PCA(res.pca, choix = "ind", axes = c(1, 2), habillage = 1) #we separate by supplementary variable Position
+plot.PCA(res.pca, choix = "ind", axes = c(1, 3), habillage = 1)
+plot.PCA(res.pca, choix = "ind", axes = c(2, 3), habillage = 1)
+```
+
+## 3. Application of MDS
+
+### a) Apply metric MDS using Euclidean distance on scaled numerical variables. Plot the data using the points on the first two coordinates using players names as label. Interpret the plot.(1p)
+
+```{r}
+num_data <- df_sel[, -1] # numerical vars (exclude categorical var Position)
+num_scaled <- scale(num_data) # scale numerical vars
+
+# Metric MDS using Euclidean distance
+ds_euc <- dist(num_scaled, method = "euclidean")
+mds_euc <- cmdscale(ds_euc, k = 2, eig = TRUE)
+names(mds_euc)
+mds_euc$points
+mds_euc$eig 
+mds_euc$GOF # same values for both GOF (Euclidean distance), represent 66% variability of the data in 2D
+
+# Prepare Euclidean MDS coordinates
+mds_euc_coords <- as.data.frame(mds_euc$points)
+colnames(mds_euc_coords) <- c("Dim1", "Dim2")
+mds_euc_coords$Player <- rownames(mds_euc$points)
+mds_euc_coords$PTS <- df_sel$PTS
+mds_euc_coords$MIN <- df_sel$MIN
+mds_euc_coords$OREB <- df_sel$OREB
+mds_euc_coords$`3PT FG` <- df_sel$`3PT FG`
+mds_euc_coords$`2PT FG` <- df_sel$`2PT FG`
+
+# plot solution based on scaled data
+x <- mds_euc$points[,1]
+y <- mds_euc$points[,2]
+plot(x, y, xlab="Coordinate 1", ylab="Coordinate 2",
+     main="Metric MDS (Euclidean distance, scaled data)", type="n")
+text(x, y, labels = row.names(df_sel), cex=.7)
+```
+
+The metric MDS plot shows how similar or different the players are based on all their numerical statistics. Each point represents one player, and the closer two players are on the map, the more similar their overall performance profiles are. We can already notice that some groups of players appear closer together, while others are clearly separated, which suggests that there are differences in general playing style or contribution. The Goodness of Fit value of around 66% means that the two-dimensional map gives a reasonably good visual summary of the relationships between players.
+
+```{r}
+# Plot PTS and Min 
+library(ggplot2)
+library(ggrepel)
+
+ggplot(mds_euc_coords, aes(x = Dim1, y = Dim2, color = PTS, size = MIN, label = Player)) +
+  geom_point(alpha = 0.8) +
+  geom_text_repel(size = 3, max.overlaps = 25) +
+  scale_color_gradient(low = "lightyellow", high = "red") +
+  labs(title = "Euclidean MDS: PTS & MIN",
+       x = "Coordinate 1", y = "Coordinate 2", color = "PTS", size = "MIN") +
+  theme_minimal()
+```
+
+Players such as Antetokounmpo, Sengun, and Markkanen appear clearly on the left side of the map, showing both high PTS and MIN values. As we move to the right, players tend to have lower scoring and fewer minutes, suggesting that Coordinate 1 mostly reflects offensive performance or playing time.
+
+```{r}
+# Plot OREB
+ggplot(mds_euc_coords, aes(x = Dim1, y = Dim2, color = OREB, label = Player)) +
+  geom_point(alpha = 0.8) +
+  geom_text_repel(size = 3, max.overlaps = 25) +
+  scale_color_gradient(low = "lightyellow", high = "darkred") +
+  labs(title = "Euclidean MDS: OREB",
+       x = "Coordinate 1", y = "Coordinate 2", color = "PTS", size = "MIN") +
+  theme_minimal()
+```
+
+A few players like Alperen Sengun and Giannis Antetokounmpo stand out with higher OREB values on the left side, but most players are grouped together regardless of their rebounding performance.
+
+```{r}
+# Plot 3PT FG 
+ggplot(mds_euc_coords, aes(x = Dim1, y = Dim2, color = `3PT FG`, label = Player)) +
+  geom_point(size = 3, alpha = 0.8) +
+  geom_text_repel(size = 3, max.overlaps = 25) +
+  scale_color_gradient(low = "lightblue", high = "darkblue") +
+  labs(title = "Euclidean MDS: 3PT Field Goals",
+       x = "Coordinate 1", y = "Coordinate 2", color = "3PT FG") +
+  theme_minimal()
+```
+
+Players with higher 3PT Field Goal values tend to appear toward the center and left side of the map, while those with lower percentages are mostly located in the lower-right area.
+
+### b) Calculate gower distance including variable “POSITION” to the data matrix. Then apply metric MDS on gower distance matrix. (0,5p)
+
+In the case of the MDS based on Gower distance, two Goodness of Fit (GOF) values are obtained. The first (0.56) measures the proportion of total variance explained by the two dimensions, including both positive and negative eigenvalues, while the second (0.65) considers only the positive eigenvalues. After some research, the second value is more informative when non-Euclidean distances are used, as it represents the part of the configuration that can be faithfully represented in Euclidean space. Therefore, we consider that approximately 65 % of the data variability is preserved in the two-dimensional Gower MDS map.
+
+```{r}
+# Metric MDS using Gower distance
+
+library(cluster)
+
+ds_gower <- daisy(df_sel, metric = "gower") # considering categorical var Position
+mds_gow <- cmdscale(ds_gower, k = 2, eig = TRUE)
+names(mds_gow)
+mds_gow$points
+mds_gow$eig 
+mds_gow$GOF # different values for both GOF (Gower distance): 0.5635557 0.6548545 --> represent 56% and 65% variability of the data in 2D
+```
+
+### c) Plot individual plots on the first two coordinates. Use different categorical and numerical variables as labels so as to explain clusters that are constructed. (1p)
+
+```{r}
+# Store coordinates
+mds_gow_coords <- as.data.frame(mds_gow$points)
+colnames(mds_gow_coords) <- c("Dim1", "Dim2")
+mds_gow_coords$Player <- rownames(df_sel)
+mds_gow_coords$Position <- df_sel$Position
+mds_gow_coords$PTS <- df_sel$PTS
+mds_gow_coords$EFF <- df_sel$EFF
+mds_gow_coords$MIN <- df_sel$MIN
+mds_gow_coords$OREB <- df_sel$OREB
+mds_gow_coords$'3PT FG' <- df_sel$'3PT FG'
+mds_gow_coords$'2PT FG' <- df_sel$'2PT FG'
+```
+
+```{r}
+# Plot 1: player names as labels
+x <- mds_gow$points[,1]
+y <- mds_gow$points[,2]
+plot(x, y, xlab="Coordinate 1", ylab="Coordinate 2",
+     main="Metric MDS (Gower distance)", type="n")
+text(x, y, labels = row.names(df_sel), cex=.7)
+```
+
+```{r}
+# Plot 2: Position 
+ggplot(mds_gow_coords, aes(x = Dim1, y = Dim2, color = Position, label = Player)) +
+  geom_point(size = 3, alpha = 0.8) +
+  geom_text_repel(size = 3, max.overlaps = 25) +
+  labs(title = "MDS (Gower distance): Position",
+       x = "Coordinate 1", y = "Coordinate 2") +
+  theme_minimal()
+```
+
+Most players are grouped consistently according to their position, with guards, forwards, and centers forming clear clusters. However, Ercan Osmani appears as a noticeable exception: although classified as a center, he is located closer to the forwards cluster. When analyzing the three-point field goals (3PT FG) map, Osmani shows one of the highest values among all players, which may explain this displacement. This suggests that his playing style is more similar to that of perimeter players. This map suggests that Coordinate 2 separates players according to their physical involvement in the game: guards are mainly positioned in the lower area, while forwards and centers appear higher on the map.
+
+```{r}
+# Plot 2: EEF 
+ggplot(mds_gow_coords, aes(x = Dim1, y = Dim2, color = EFF, label = Player)) +
+  geom_point(size = 3, alpha = 0.8) +
+  geom_text_repel(size = 3, max.overlaps = 25) +
+  scale_color_gradient(low = "lightblue", high = "darkblue") +
+  labs(title = "MDS (Gower distance): Efficiency (EFF)",
+       x = "Coordinate 1", y = "Coordinate 2", color = "EFF") +
+  theme_minimal()
+```
+
+When coloring the MDS map by player efficiency (EFF), a clear gradient appears across the first coordinate. Players on the left side of the map, such as Giannis Antetokounmpo, Alperen Şengün, and Lauri Markkanen, show the highest efficiency values, while those on the right side have lower efficiency scores. This pattern suggests that the first coordinate mainly reflects overall performance level, separating high-impact players from those with smaller contributions.
+
+```{r}
+# Plot 3: PTS and Min 
+ggplot(mds_gow_coords, aes(x = Dim1, y = Dim2, color = PTS, size = MIN, label = Player)) +
+  geom_point(alpha = 0.8) +
+  geom_text_repel(size = 3, max.overlaps = 25) +
+  scale_color_gradient(low = "lightyellow", high = "red") +
+  labs(title = "MDS (Gower distance): PTS (color) and MIN (size)",
+       x = "Coordinate 1", y = "Coordinate 2", color = "PTS", size = "MIN") +
+  theme_minimal()
+```
+
+In the MDS map colored by points (PTS) and scaled by minutes played (MIN), players on the left side of the map are represented by larger and darker red points, indicating a higher playing time and scoring performance. These players are among the most active and productive on the court. Players on the right side have lighter colors and smaller point sizes, meaning they contribute fewer minutes and points overall. This suggests that the first coordinate mainly reflects offensive involvement and scoring capacity.
+
+```{r}
+# Plot 4: OREB 
+ggplot(mds_gow_coords, aes(x = Dim1, y = Dim2, color = OREB, label = Player)) +
+  geom_point(size = 3, alpha = 0.8) +
+  geom_text_repel(size = 3, max.overlaps = 25) +
+  scale_color_gradient(low = "lightyellow", high = "darkred") +
+  labs(title = "MDS (Gower distance): Offensive Rebounds (OREB)",
+       x = "Coordinate 1", y = "Coordinate 2", color = "OREB") +
+  theme_minimal()
+```
+
+The MDS map colored by offensive rebounds (OREB) shows that players with higher values are mainly located towards the upper and left side of the plot. Although the variation is less pronounced than for scoring variables, players such as Alperen Şengün and Giannis Antetokounmpo stand out with higher OREB values.
+
+```{r}
+# Plot 5: 3PT FG 
+ggplot(mds_gow_coords, aes(x = Dim1, y = Dim2, color = `3PT FG`, label = Player)) +
+  geom_point(size = 3, alpha = 0.8) +
+  geom_text_repel(size = 3, max.overlaps = 25) +
+  scale_color_gradient(low = "lightblue", high = "darkblue") +
+  labs(title = "MDS (Gower distance): 3PT Field Goals",
+       x = "Coordinate 1", y = "Coordinate 2", color = "3PT FG") +
+  theme_minimal()
+```
+
+When coloring by three-point field goals (3PT FG), players with higher values appear mostly in the lower-left area of the map. These correspond mainly to guards and perimeter players, confirming that the first coordinate reflects offensive style, separating outside shooters from inside players with low 3PT participation.
+
+### d) Which MDS do you think better group the individuals? Why? (0,5p)
+
+The Euclidean MDS mostly separates players by general performance (for example, those who score more points or play more minutes appear clearly apart) but it doesn’t really capture differences in playing roles or styles. In contrast, the Gower MDS creates groups that feel more realistic from a basketball point of view. The first coordinate seems to reflect how much a player contributes offensively, while the second one separates players by their on-court role: guards appear mostly in the lower area, and forwards and centers higher up, showing a gradual increase in physical presence near the basket. Overall, the Gower approach gives a clearer and more interpretable picture of the players, capturing both their statistics and their role on the court.
+
+## 4. Application of MCA
+
+### a) Convert the numerical variables to binary variables with two categories as “over average” and “below average” performances. (0,5p)
+
+In order to simplify interpretation, factor level 'over average' will be defined as 'o', and 'below average' as 'b'
+
+```{r}
+dfmca <- df_sel
+nums = names(dfmca)[2:16]
+
+for (var in nums){
+  meanvar = mean(dfmca[[var]])
+  dfmca[[var]] <- ifelse(dfmca[[var]] >= meanvar, "o", "b") 
+  dfmca[[var]] <- as.factor(dfmca[[var]])
+}
+summary(dfmca)
+```
+
+### b) Apply MCA on these variables and interpret your findings. (2p)
+
+Variable `position` is not used in this analysis, as it is stated that MCA will be applied only to the newly defined binary factors.
+
+The analysis will be done using Indicator Matrix. That way we will be able to study both the categories of the variables and the individuals.
+
+```{r}
+
+## Indicator Matrix
+library(FactoMineR)
+tab.disjonctif(dfmca[2:16])
+
+## MCA Application on Data using Indicator Matrix
+res.mca <- MCA(dfmca[2:16])
+summary(res.mca)
+```
+
+In order to choose which dimensions we will work with, we apply the rule of choosing the dimensions with eigenvalues greater than the average inertia of the indicator matrix per dimension.
+
+In this case, as there are 15 variables, J = 15, and as each variable has 2 values, K = 30. Therefore, the average inertia is 1/15 (0.06666667), and the dimensions selected are until Dim.4
+
+The summary shows all of the analysis, but the description will be done separately.
+
+```{r}
+# K=15x2=30, J=15
+# no of dimension: K-J=15
+# average inertia per dimension: 1/(K-J)=1/15
+
+# Choose the dimensions with eigenvalues > 1/15 --> Until Dim.4
+summary(res.mca, ncp=4)
+res.mca
+```
+
+As can be seen in the description of Dimensions, the most significant variables in each dimension, which are those represented with the highest value of R2, are: - For *dimension 1*, the Efficiency `EFF`, as it's value of R2 is 0.8414. - For *dimension 2*, it is number of 2pt Field Goal `2PT FG`, with a value of R2 of 0.6864. - For *dimension 3*, there isn't such a significant variable, but the one with the highest R2 value is 3pt Field Goal `3PT FG`, with a value of R2 of 0.3615.
+
+Also, it is relevant to observe the link between variable and categories to see which are the most significant categories in each dimension, which are those represented with the highest absolute value of Estimate.
+
+They follow the same pattern for all three dimensions: the categories most positively correlated are the most significant variables mentioned above, for the 'over average' category, and the most negatively correlated is the 'under average' value of the same variable.
+
+This can also be corroborated with the coordinate analysis. They are the values that are more extreme, in the negative and positive side of the axis.
+
+That means that observations will be easily separated between those over average and under, and interpreted according to each dimension.
+
+-   Note: The results for dimension 4 are not shown by R, as it has an eigenvalue that is technically lower than the threshold (0.066 \< 0.067).
+
+```{r}
+### Eigenvalues
+res.mca$eig
+barplot(res.mca$eig[,2],main="Eigenvalues", names.arg=1:nrow(res.mca$eig))
+
+## Coordinates of categories
+res.mca$var$coord
+
+## Description of Dimensions
+dimdesc(res.mca)
+```
+
+For the plots, we will interpret them in the 1st and 2nd dimension, since they are the most significative.
+
+Firstly, we will interpret the *cloud of individuals*. The plot shows both the individuals and the categories represented by the 1st and 2nd dimension.
+
+It is worth noting that there are almost no points in the center of the graph, they are all placed away from the origin.
+
+-   For the categories, this pattern is due to the transformation of the numerical variables into binary ones, dividing them into “over average” and “below average” categories. Since both categories have similar frequencies, none of them represents a “dominant” or “average” profile. Therefore, both are located in opposite directions.
+
+-   For the individuals, since each player belongs to either the “over” or “under” group for each variable, the overall profile of individuals is more polarized.
+
+As a conclusion, binarizing continuous variables helps to highlight contrasts between players’ performances, but at the same time reduces the amount of information in the variables.
+
+```{r}
+### Clouds ###
+## Cloud of Individuals
+plot.MCA(res.mca,choix="ind",label="none")
+```
+
+Then, we will interpret the *cloud of individuals grouped by most significant categories per dimension*. This is done by selecting the variable in the 'habillage' parameter.
+
+-   For *dimension 1*, the Efficiency `EFF`. The map clearly shows this division: in the negative side of the Dim 1 axis, we can see the individuals with an efficiency below average, and in the positive side, those over average.
+
+-   For *dimension 2*, it is number of 2pt Field Goal `2PT FG` Although there are a few exceptions, the map also shows this division: in the negative side of the Dim 2 axis, we can see the individuals with a value of `2PT FG` below average, and in the positive side, those over average.
+
+```{r}
+## Cloud of Individuals
+plot.MCA(res.mca,choix="ind",label="none",invisible="var",habillage = "EFF")
+plot.MCA(res.mca,choix="ind",label="none",invisible="var",habillage = "2PT FG")
+```
+
+The graph of the active categories is very relevant: the categories of values 'over average' are represented on the positive side of Dim 1, and the ones 'below average' are on the negative side.
+
+Considering the total information obtained from the cloud of categories, and also the cloud of variables, the conclusions we draw of the information obtained by the dimensions is the following:
+
+-   *Dimension 1* mainly represents the overall performance level, separating players with “over average” results on the positive side, from those “below average” on the negative side.
+
+-   *Dimension 2* is more related to the shooting style of the players.
+
+Players with above-average values in 2-point field goals (2PT FG) are positioned on the upper side of the axis, together with offensive rebounds (OREB), which makes sense since players who frequently capture offensive rebounds often score from close range, leading to more 2-point shots . These players also tend to have below-average 3-point field goals (3PT FG), which fits with the usual profile of inside players.
+
+Conversely, the lower part of the axis shows the opposite pattern — players with higher 3-point shooting and fewer offensive rebounds, typically corresponding to perimeter players.
+
+```{r}
+## Cloud of Categories
+plot(res.mca,invisible=c("ind"),title="Graph of the active categories")
+plot(res.mca,invisible=c("ind"),col.var=rep(c("black","red"),15),title="Graph of the active categories")
+
+## Cloud of variables
+plot(res.mca,choix="var",title="Cloud of variables")
+```
+
+Additional analysis: Using `position` as a supplementary variable.
+
+This is done in order to check if this variable gives any extra information to the analysis.
+
+As we can see in the analysis, this supplementary variable is mainly focused on the second dimension. Center and forward are on the positive side, while guard is on the negative. The behaviour of these positions corresponds to the interpretation of dimension 2 done previously: players who score more on 2 PT shots and with more offensive rebounds are Center and Forward, and those with more 3 PT shots are the Guards.
+
+```{r}
+# Position used as a supplementary variable
+res.mca <- MCA(dfmca,quali.sup=1)
+
+# Result summaries of MCA
+res.mca$quali.sup
+
+# Graphs of the variables
+plot(res.mca,choix="var",title="Graph of the variables")
+plot(res.mca,invisible=c("ind","var"),hab="quali", title="Graph of the supplementary categories")
+```
