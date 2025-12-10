@@ -82,7 +82,7 @@ d <- dist(dfscaled, method = "euclidean") # apply distance matrix on the scaled 
 
 ### a) Decide the best method to draw dendrogram.(0.5p)
 
-The hierarchical clustering analysis is performed on the numerical variables after standardising them with the \emph{scale()} function. This ensures that all variables contribute equally to the computation of distances. An Euclidean distance matrix is then obtained using the \emph{dist()} function applied to the scaled dataset.
+The hierarchical clustering analysis is performed on the numerical variables after standardizing them with the \emph{scale()} function. This ensures that all variables contribute equally to the computation of distances. An Euclidean distance matrix is then obtained using the \emph{dist()} function applied to the scaled dataset.
 
 The clustering structure is produced with the \emph{hclust()} function, and different linkage criteria are considered in order to compare their performance. 
 
@@ -352,10 +352,8 @@ The Shapiro-Wilk normality test rejects the null hypothesis for all variables ex
   - TwoPt.FG, where its p-value is 0.1178. 
   - PF, where its p-value is 0.3919
 
-FG does not pass the Shapiro-Wilk normality test, since its p-value is 0.01795. However, since it is not as close to zero as it is the case for the other variables, and its histogram is bell-shaped, we will consider it for this analysis. (???)
-
+FG does not pass the Shapiro-Wilk normality test, since its p-value is 0.01795. However, since it is not as close to zero as it is the case for the other variables, and its histogram is bell-shaped, we will consider it to be approximately normal for this analysis.
 ```{r}
-
 ### Assumption 1: Normality ####
 ## Checking histogram, qqplots and shapiro Willk's test results
 
@@ -375,17 +373,20 @@ dfdisc <- df2[,c(1:4,11)]
 
 In order to test the homogeneity of variance for the different positions between the normal variables, we will apply Box's M test for testing variance covariance matrices.
 
-Since the p-value we obtain is significant (0.00225), the null hypothesis of homogeneity of variances is rejected.
+Since the p-value we obtain is significant (0.00225), the null hypothesis of homogeneity of variances is rejected, after examining the boxplots, we observe that there's obvious homogeneity differences in all variables.
 
 ```{r}
 ##### Assumption 2: Homogenity of Variance ####
 ## Box's M test for testing variance covariance matrices
-install.packages("biotools")
+# install.packages("biotools")
 library(biotools)
 ?boxM
 
 boxM(dfdisc[,2:5],dfdisc$Position)
-
+boxplot(dfdisc[,2]~dfdisc$Position) # no variance homogeneity in MIN
+boxplot(dfdisc[,3]~dfdisc$Position) # no variance homogeneity in FG
+boxplot(dfdisc[,4]~dfdisc$Position) # no variance homogeneity in TwoPt.FG
+boxplot(dfdisc[,5]~dfdisc$Position) # no variance homogeneity in PF
 ```
 ```{r}
 ##### Correlation ###
@@ -401,14 +402,9 @@ There are 3 different types of discriminant models:
   - Naive Bayes: assumes independent predictors.
   
 The variables we are working with can be considered normal but do not have a homogeneity of variances.
-Besides, they cannot be considered to be independent, as some of the variables show significant correlations, such as FG and TwoPt.FG (0.78).
+Besides, they cannot be considered to be independent, as some of the variables show significant correlations, such as FG and TwoPt.FG (0.78). Therefore, the proper model to use on this data set is QDA.
 
-Therefore, the proper model to use on this data set is QDA.
-
-
-In order to see which model best classifies the player's position, we used a Stepwise Classification to see which variables are needed. 
-
-The result of this method shows how the model obtains the best correctness rate by using only 2 out of the 4 variables:
+In order to see which model best classifies the player's position, we used a Stepwise Classification to see which variables are needed. The result of this method shows how the model obtains the best correctness rate by using only 2 out of the 4 variables:
 TwoPt.FG and PF. 
 
 ```{r}
@@ -434,6 +430,11 @@ posstep$result.pm
 
 
 ### c) Make a table cross classifying real and predicted values and interpret correct classification rates. (1p)
+The contingency table (confusion matrix), where rows represent the true classes and columns the predicted classes, shows that the model performs better when classifying Forwards and Guards: each group has 17 correctly classified observations out of 20. In contrast, the model struggles with Centers, identifying correctly only 3 out of 7 and misclassifying most of them as Forwards.
+
+The overall Correct Classification Rate (CCR) is 75.5%, and the class-specific CCRs confirm the unequal performance across groups: Centers are the worst predicted class (42.8%), whereas Forwards and Guards achieve higher CCRs of 77.2% and 85%, respectively.
+
+For comparison, the baseline accuracy, computed from the class proportions, is 38.86%. This represents the accuracy expected by chance if predictions were made randomly but respecting the observed class proportions. The model's CCR therefore improves substantially in comparison to the baseline accuracy.
 
 ```{r}
 ### QDA Function###
@@ -444,29 +445,28 @@ qda.fit$prior
 pospred<-predict(qda.fit)
 names(pospred)
 
-#Class and posterior prob. predictions 
+# Class and posterior prob. predictions 
 pospred$class
 pospred$posterior
 
-
-#Contingency Table
+# Contingency Table of Observed and Predicted Values
 tab2<-table(dfdisc$Position,pospred$class) #columns are predictions
 tab2
 
-# CCR
+# CCR (Correct Classification Rate)
 classrate<-sum(diag(tab2))/sum(tab2)
 classrate
 
-#CCR among groups
+# CCR among groups
 diag(prop.table(tab2, 1))
 
-#Total CCR
+# Total CCR
 sum(diag(prop.table(tab2)))
 
-#Prediction accuracy p1^2+p^2
+# Prediction accuracy p1^2+p^2
 qda.fit$prior[1]^2 + qda.fit$prior[2]^2+qda.fit$prior[3]^2
 
-#Comparison 
+# Comparison 
 comp<-cbind(dfdisc$Position,pospred$class)
 comp
 ```
@@ -474,18 +474,11 @@ comp
 
 ### d) Test whether the classification is done by chance using Q statistic. (1p)
 
-We can test the importance of the discriminant function by using the Q statistic and testing it as a chi-squared of k-1 degrees of freedom and a significance of alpha. 
+We can test whether the classification accuracy of the discriminant function is better than doing it by chance using the Q statistic and testing it as a chi-squared distribution with $k - 1$ degrees of freedom and a significance level $\alpha$. The null hypothesis is based on that the discrimination characteristics of the discriminant function is not important, so that the model's discrimination performance is no better than chance.
 
-The null hypothesis states that the discrimination characteristics of the discriminant function is not important.
-
-Since in our case we obtained a p-value greater than the significance level (0.4796523), we cannot reject H0 and the classification performance could be explained by random guessing. (???)
-
+In our case, the test outputs a p-value of 0.48, we fail to reject the null hypothesis, this indicates that the improvement in classification accuracy is not statistically significant when compared against a baseline of random guessing with equal priors.
 
 ```{r}
-### d) Q statistic: test whether the classification is done by chance ###
-
-# Confusion matrix 'tab2' has been computed above
-
 # Total number of observations
 n <- sum(tab2)
 
@@ -503,6 +496,5 @@ Q
 # p-value using chi-squared distribution with (k - 1) degrees of freedom
 pvalue <- 1 - pchisq(Q, df = k - 1)
 pvalue
-
 ```
 
