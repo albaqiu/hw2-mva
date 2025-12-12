@@ -11,14 +11,29 @@ date: "2025-12-14"
 ```{r}
 if(!is.null(dev.list())) dev.off()
 rm(list=ls())
+
+library(readxl)
+library(corrplot)
+library(FactoMineR)
+library(cluster)
+library(ggplot2)
+library(ggrepel)
+library(kmed)
+library(dplyr)
+library(factoextra)
+
+set.seed(123)
 ```
 
 ## 1. Exploratory data analysis
 
 ### Import the data set to R correctly and assign player names as rownames of the data frame.
 
+The dataset has been imported with the \emph{read_excel()} function from the \emph{readxl} library. Using the \emph{as.data.frame()} function, it has been converted to a data frame. 
+
+The row names of the data frame have been assigned as the players' names. Moreover, the column containing the players' names has been removed from the data frame since it is no longer needed after being set as row names.
+
 ```{r}
-library(readxl)
 data <- read_excel("data_Eurobasket_2025.xlsx")
 head(data)
 
@@ -33,7 +48,7 @@ names(df)[names(df) == "3PT FG"] <- "ThreePt.FG"
 head(df)
 ```
 
-The structure of the dataset was checked using the `str()` function. Categorical variables (`Team` and `Position`) were converted to factors because they represent qualitative categories, while all other variables remained numerical.
+The structure of the dataset has been checked using the \emph{str()} function. Categorical variables (\emph{Team} and \emph{Position}) have been converted to factors because they represent qualitative categories, while all other variables remained numerical.
 
 ```{r}
 str(df)
@@ -45,6 +60,48 @@ df$Position <- as.factor(df$Position)
 
 ### Dataframe using variables “Position”, “MIN”, “FG”, “2PT.FG”, “3PT.FG”, “FT”, “OREB”, “DREB”, “REB”, “AST”, “PF”, “TO”,“STL”,“BLK”,“EFF” and “PTS”
 
+A new data frame has been created based on the requested variables.
+
+Moreover, the correlation matrix of the numeric variables in the new data frame has been computed. To visualize the correlation results, the \emph{corrplot()} function from the \emph{corrplot} library has been used.
+
+The vast majority of numerical variables are positively correlated. In fact, those that are negatively correlated do not show a strong relationship. The highest negative correlation is between 2PT.FG and 3PT.FG, with value of -0.311. A player who takes a lot of 3-point shots may take fewer shots near the basket, and vice versa, but this trade-off is not extreme.
+
+Nonetheless, there are some particular interesting positive correlations. To analyze these results more effectively, we will divide the study into three groups:
+
+1) Very strong correlated variables (correlation > |0.90|):
+- EFF and PTS (r = 0.95): Efficiency and points are almost perfectly correlated. These suggests that the more points a player scores, the more efficient is the player.
+
+- DREB and REB (r = 0.97): Total rebounds is the sum of offensive rebounds and defensive rebounds. Nonetheless, it makes sense that defensive rebounds dominate total rebounds, since defensive rebounds are typically more frequent than offensive rebounds.
+
+- EFF and DREB (r = 0.90): Players who grab defensive rebounds tend to have higher efficiency ratings.
+
+2) Strong correlated variables (|0.90| > correlation > |0.80|):
+- EFF and MIN (r = 0.83), MIN and PTS (r = 0.84): The more minutes a player spends on the court, the more points they tend to score, and, consequently, the higher their efficiency.
+
+- OREB and REB (r = 0.87): Obviously, the total rebounds are correlated with offensive rebounds, since it contributes directly to the total number of rebounds.
+
+- EFF and REB (r = 0.899): Usually, the more rebounds a player catches, the more efficient a player is.
+
+- DREB and PTS (r = 0.817): The more defensive rebounds a player collects, the higher the probability of scoring, since each rebound creates an additional offensive opportunity, and therefore, more points can be scored.
+
+3) Moderate correlated variables (|0.80| > correlation > |0.65|):
+
+- AST and EFF (r = 0.666), EFF and TO (r = 0.761), AST and TO (r = 0.772): Efficiency is partly determined by assists and turnovers, so it makes sense that these variables are correlated. What is surprising, however, is that the correlation between efficiency and turnovers is positive, since a higher number of turnovers would normally be expected to reduce a player’s efficiency. On the other hand, the more assists a player makes, the more frequently they handle the ball, which naturally increases the likelihood of committing a turnover.
+
+- EFF and OREB (r = 0.717): Efficiency is partly determined by offensive rebounds, so it makes sense that these variables are correlated.
+
+- MIN - REB (r = 0.666), DREB - MIN (r = 0.731), AST - MIN (r = 0.707), MIN - TO (r = 0.663): The more minutes a player spends on the court, the more rebounds, assists, and turnovers they can make.
+
+- 2PT FG - FG (r = 0.780): Usually, players who tend to score more two-point shots will have a higher overall field goal percentage. Notice that FG and 3PT.FG are negatively correlated, since three-point shots are generally more difficult to make and therefore lower the overall field goal percentage.
+
+- DREB and OREB (r = 0.728): If a player is good at grabbing offensive rebounds, they are likely to be good at grabbing defensive rebounds as well.
+
+- DREB - TO (r = 0.666): If a player grabs a defensive rebound, they immediately transition to offense, which increases the chances of losing the ball.
+
+- PTS and TO (r = 0.761), PTS and REB (r = 0.788): The more points a player scores, the more frequently they handle the ball, which increases their probability of losing it. Similarly, the more rebounds a player collects, the higher their chances of scoring.
+
+To summarize the previous ideas, it is clear that a player’s efficiency, the number of points they score, the minutes they spend on the court, and the rebounds they collect are highly correlated. It is also important to note that the MIN variable shows a moderate to strong correlation with almost all numerical variables. This makes complete sense, as the more time a player spends on the court, the higher all their recorded statistics are likely to be. Moreover, since the EFF variable is derived from individual performance indicators, it is expected to be correlated with them. However, because not all statistics contribute equally to a player’s efficiency, the strength of these correlations varies across variables.
+
 ```{r}
 # Select only the required variables
 df2 <- df[, c("Position", "MIN", "FG", "TwoPt.FG", "ThreePt.FG", "FT", "OREB", "DREB", "REB", "AST", "PF", "TO", "STL", "BLK", "EFF", "PTS")]
@@ -55,12 +112,13 @@ head(df2)
 cor_matrix <- cor(df2[, -1]) 
 round(cor_matrix, 2) # correlation matrix
 
-library(corrplot)
 corrplot(cor_matrix, method = "color", type = "upper",
          addCoef.col = "black",     
          tl.col = "black",          
          tl.cex = 0.8,              
          number.cex = 0.7)
+
+plot(df2[, -1])
 ```
 
 ## 2. Hierarchical Clustering
@@ -80,19 +138,19 @@ d <- dist(dfscaled, method = "euclidean") # apply distance matrix on the scaled 
 ```
 
 
-### a) Decide the best method to draw dendrogram.(0.5p)
+### a) Decide the best method to draw dendrogram
 
-The hierarchical clustering analysis is performed on the numerical variables after standardizing them with the \emph{scale()} function. This ensures that all variables contribute equally to the computation of distances. An Euclidean distance matrix is then obtained using the \emph{dist()} function applied to the scaled dataset.
+The hierarchical clustering analysis has been performed on the numerical variables after they have been standardized with the \emph{scale()} function. This ensures that all variables contribute equally to the computation of distances. After the standardization, an Euclidean distance matrix has been obtained using the \emph{dist()} function applied to the scaled dataset.
 
-The clustering structure is produced with the \emph{hclust()} function, and different linkage criteria are considered in order to compare their performance. 
+The clustering structure has been produced with the \emph{hclust()} function, and different linkage criteria have been considered in order to compare their performance. 
 
-The resulting dendrograms allow a first inspection of the potential number of clusters. Using the \emph{rect.hclust()} function, possible partitions into $2$, $3$, $4$ and $5$ clusters are highlighted. 
+The resulting dendrograms allow a first inspection of the potential number of clusters. Using the \emph{rect.hclust()} function, possible partitions into $2$, $3$, $4$, and $5$ clusters are highlighted.
 
-- **Complete method:** Shows moderately well-defined groups, but some clusters merge at very different heights, producing unbalanced partitions and making the choice of k less clear.
-- **Ward method:** Produces the most compact and balanced clusters, with clear separation and smooth increases in fusion height, making it the most interpretable and stable method.
-- **Single method:* Suffers from strong chaining: observations join sequentially at very low heights, resulting in one elongated cluster and making meaningful grouping impossible.
-- **Average method:* Offers a more regular structure than complete or single, but still generates some uneven merges and less compact groups compared with Ward.
-- **Centroid method:* Displays unstable merges and several inversions in structure, leading to distorted cluster shapes and weaker interpretability.
+- \textbf{Complete method:} It shows moderately well-defined groups, but some clusters merge at very different heights, producing unbalanced partitions and making the choice of the best k less clear.
+- \textbf{Ward method:} It produces the most compact and balanced clusters, with clear separation between them and gradual increases in fusion height, making it the most interpretable and stable method.
+- \textbf{Single method:} It suffers from strong chaining, where observations join sequentially at very low heights, resulting in a single elongated cluster and preventing meaningful grouping.
+- \textbf{Average method:} It offers a more regular structure than complete or single linkage, but still produces some uneven merges and less compact groups compared with Ward’s method.
+- \textbf{Centroid method:} It displays unstable merges and several structural inversions, breaking the expected hierarchy and leading to distorted cluster shapes and reduced interpretability.
 
 ```{r}
 ## Set margins 
@@ -172,29 +230,26 @@ par(xpd = FALSE, mar = c(5, 4, 4, 2))
 ```
 
 
-### b) How many clusters do you think exist in the data considering the dendrogram? (0.5p)
+### b) How many clusters do you think exist in the data considering the dendrogram?
 
-Based on the Ward dendrogram, a solution with **$4$ clusters** appears to be the most appropriate. At this level, the dendrogram is cut just before a clear increase in fusion height, resulting in four well-separated and reasonably balanced groups. A cut at $3$ clusters would still merge branches that show noticeable internal variability, while increasing the number of clusters to $5$ would lead to an unnecessary fragmentation of already compact groups. 
-For this reason, the dendrogram suggests that the underlying structure of the data is best described by **$4$ clusters**.
-
-
+Based on the Ward dendrogram, a solution with \textbf{$4$ clusters} appears to be the most appropriate. At this level, the dendrogram is cut just before a clear increase in fusion height, resulting in four well-separated and reasonably balanced groups. A cut at $3$ clusters would still merge branches that show noticeable internal variability, while increasing the number of clusters to $5$ would lead to an unnecessary fragmentation of already compact groups. 
+For this reason, the dendrogram suggests that the underlying structure of the data is best described by \textbf{$4$ clusters}.
 
 ## 3. K means clustering
 
-### a) Find the optimum number of clusters. (0.5p)
+### a) Find the optimum number of clusters
 
-A non-hierarchical clustering analysis is performed using several criteria to determine the optimum number of clusters. Three different methods are considered: the **TWSS Elbow Graph**, the **Pseudo F Index** and the **Silhouette Index**.
+A non-hierarchical clustering analysis has been performed using several criteria to determine the optimum number of clusters. Three different methods are considered: the \textbf{TWSS Elbow Graph}, the \textbf{Pseudo F Index}, and the \textbf{Silhouette Index}.
 
 #### I) TWSS Elbow Graph
 
-The Total Within-Cluster Sum of Squares (TWSS) has been computed for different values of k using the **k-means algorithm**, in order to identify an appropriate number of clusters through the **Elbow method**.
+The Total Within-Cluster Sum of Squares (TWSS) has been computed for different values of k using the \textbf{k-means algorithm}, in order to identify an appropriate number of clusters through the \textbf{Elbow method}.
 
 The TWSS curve shows a clear elbow at $k=4$, where the reduction in within-cluster variability becomes noticeably less steep.
 Moreover, the ratio between the between-cluster sum of squares and the total sum of squares increases from $0.437$ for $k=3$ to $0.544$ for $k=4$, indicating a  better separation between groups. Therefore, based on the Elbow method and the explained separation, $k=4$ is selected as the optimal number of clusters.
 
 ```{r}
-## Applying k-means algorithm for different number of clusters 
-set.seed(123)
+## Applying k-means algorithm for different number of clusters
 
 aux <- c()
 for (i in 2:6){
@@ -233,11 +288,10 @@ k4$betweenss/k4$totss # 0.544 greater separation between clusters
 
 #### II) Pseudo F Index
 
-The **Pseudo-F Index** has been computed for different values of k in order to evaluate the separation between clusters obtained with k-means algorithm. As shown in the figure, the index reaches its maximum value at $k=4$ and then decreases steadily as k increases. 
+The \textbf{Pseudo-F Index} has been computed for different values of k in order to evaluate the separation between clusters obtained with k-means algorithm. As shown in the figure, the index reaches its maximum value at $k=4$ and then decreases steadily as k increases. 
 
 ```{r}
 # Pseudo F index = BSS*(n-k)/WSS*(k-1)
-set.seed(123)
 aux <- c()
 for (i in 2:10){
   k <- kmeans(dfscaled, centers=i, nstart=25)
@@ -250,14 +304,13 @@ points(4, aux[4 - 1], pch = 19, cex = 1.5, col = "red")
 
 #### III) Silhoutte Index
 
-Finally, the **Silhouette Index** is computed using both the \emph{silhouette()} function from the \emph{cluster} package and the \emph{fastkmed()} function from the \emph{kmed} package.
+Finally, the \textbf{Silhouette Index} has been computed using both the \emph{silhouette()} function from the \emph{cluster} package and the \emph{fastkmed()} function from the \emph{kmed} package.
 
 The Silhouette Index yields similar results for $k=3$ and $k=4$, with average widths of $0.22$ and $0.21$, respectively. Although $k=3$ achieves a slightly higher silhouette value, the difference is marginal and both solutions exhibit comparable cohesion. Moreover, the silhouette structure of $k=4$ does not indicate poorly defined clusters, and remains consistent with the separation patterns observed in hierarchical clustering.
 Therefore, the Silhouette Index suggests that both $k=3$ and $k=4$ are acceptable, but does not provide strong evidence against choosing $k=4$ as indicated by the TWSS and Pseudo-F criteria.
 
 ```{r}
 ## A) Silhouette function from cluster library
-library(cluster)
 
 # k=3
 si <- silhouette(k3$cluster, d)
@@ -269,10 +322,8 @@ plot(si) # max silhouette index: 4th cluster
 
 
 ## B) Silhouette function from kmed library
-library(kmed)
 
 # k=3
-set.seed(123)
 res <- fastkmed(d, 3) 
 silhouette <- sil(d, res$medoid, res$cluster)
 silhouette$result
@@ -280,7 +331,6 @@ silhouette$plot
 # k=3 higher silhouette value
 
 # k=4
-set.seed(123)
 res <- fastkmed(d, 4)
 silhouette <- sil(d, res$medoid, res$cluster)
 silhouette$result
@@ -288,42 +338,38 @@ silhouette$plot
 # k=3 higher silhouette value
 ```
 
-To sum up, although the Silhouette Index shows a slightly higher average score for $k=3$, both the TWSS Elbow method and the Pseudo-F Index support $k=4$ as the most meaningful partition. The four-cluster solution provides a better separation between groups ($BSS/TSS=0.544$), a clearer structural interpretation, and it is fully consistent with the hierarchical clustering results. For these reasons, $k=4$ is selected as the optimal number of clusters.
+To sum up, although the Silhouette Index shows a slightly higher average score for $k=3$, both the TWSS Elbow method and the Pseudo-F Index support $k=4$ as the most meaningful partition. The four-cluster solution provides a better separation between groups ($BSS/TSS=0.544$), a clearer structural interpretation, and it is fully consistent with the hierarchical clustering results. For these reasons, $k=4$ has been selected as the optimal number of clusters.
 
+### b) Apply k-means clustering using the number of clusters that you decided. Interpret each cluster by making a descriptive statistics table
 
-### b) Apply k-means clustering using the number of clusters that you decided. Interpret each cluster by making a descriptive statistics table. (1.5p)
+Based on the results obtained in the previous section, $k=4$ has been selected as the optimal number of clusters, and the k-means algorithm has been applied to the scaled dataset. The resulting clusters have been interpreted using descriptive statistics as follows:
 
-Based on the results obtained in the previous section, $k=4$ is selected as the optimal number of clusters, and the k-means algorithm is applied to the scaled dataset. The resulting clusters are interpreted using descriptive statistics as follows:
-
-- **Cluster 1:** Low-impact perimeter players
+- \textbf{Cluster 1:} Low-impact perimeter players
 This group gathers players with moderate playing time ($≈15$ minutes) and overall modest statistical contribution. Their scoring efficiency is average across FG, 2PT and 3PT percentages, and they provide limited rebounding ($≈2$ REB) and moderate assists ($≈1.5$ AST).
 They may represent role players, typically perimeter players who contribute in short bursts without being primary scoring options.
 
-- **Cluster 2:** Efficient specialists with limited minutes
+- \textbf{Cluster 2:} Efficient specialists with limited minutes
 Players in this cluster show the best shooting percentages in the dataset, especially 2PT FG ($≈80%$), but they play the fewest minutes ($≈10$).
 Their statistical output is low in totals due to reduced court time, but their efficiency is notably high relative to minutes ($EFF ≈ 4.8$).
 This group may corresponds to situational players or bench specialists, particularly big men and finishing forwards, who produce efficiently in very short rotations.
 
-- **Cluster 3:** Dominant high-usage players (3 players: all Forwards)
+- \textfb{Cluster 3:} Dominant high-usage players (3 players: all Forwards)
 This small but meaningful cluster contains players with very high minutes ($≈30$) and elite production across all categories: $REB ≈ 9.6$, $AST ≈ 4.3$, $EFF ≈ 28$ and $PTS ≈ 24$.
 They are the star players of the tournament, acting as primary scoring options and offensive hubs for their teams.
 The fact that only three players fall into this category reflects how statistically exceptional they are compared with the rest of the dataset.
 
-- **Cluster 4:** Balanced starters with strong contribution
+- \textbf{Cluster 4:} Balanced starters with strong contribution
 Players in this cluster have high playing time ($≈24$ minutes) and solid all-around contributions: 3PT FG highest among clusters ($≈43%$), $AST ≈ 3$, $PTS ≈ 11$ and $EFF ≈ 13$.
 This group represents core rotation starters, typically perimeter players and forwards who contribute in scoring, playmaking, and defense. They are not as dominant as Cluster 3 but form the backbone of competitive teams.
 
 ```{r}
 # Apply k-means with the selected number of clusters
-set.seed(123)
 k4 <- kmeans(dfscaled, centers = 4, nstart = 25)
 
 # Add cluster label to original unscaled data
 dfclust$Cluster <- as.factor(k4$cluster)
 
 # Descriptive statistics per cluster
-library(dplyr)
-
 cluster_summary <- dfclust[, -1] %>%
   group_by(Cluster) %>%
   summarise(across(everything(), mean, na.rm = TRUE))
@@ -333,16 +379,137 @@ cluster_summary
 table(dfclust$Cluster, dfclust$Position)
 ```
 
-
 ## 4. Hierarchical Clustering based on PCA and MCA
 
-### a) Use HCPC() function and apply a PCA based clustering on the pca output that you had from HW1. Decide on number of clusters. (0.5)
+In order to proceed with the hierarchical clustering based on PCA and MCA, the PCA and MCA results from Homework 1 have been computed using the \emph{PCA()} and \emph{MCA()} functions from the library \emph{FactoMineR}. Note that the PCA has been computed taking the Position as a supplementary qualitative variable and the EFF as supplementary quantitative variable. On the other hand, the MCA has been applied to the \emph{df_binary} that categorized the numeric variables.
 
-### b) Interpret each cluster by using profiling.(1p)
+```{r}
+dfhclust <- df2
 
-### c) Use HCPC() function and apply a MCA based clustering on the multiple correspondence analysis output that you had from HW1.Decide on number of clusters. (0.5p)
+df_binary <- dfhclust
 
-### d) Interpret each cluster by using profiling. (1p)
+binary <- function(x){
+  ifelse(x > mean(x), "over_average", "below_average")
+}
+
+for(col in names(dfhclust[,-1])) {
+  df_binary[[col]] <- as.factor(binary(dfhclust[[col]]))
+}
+
+
+eff_idx <- which(colnames(dfhclust) == "EFF")
+pos_idx <- which(colnames(dfhclust) == "Position")
+
+res.pca <- PCA(dfhclust,
+           scale.unit = TRUE,
+           quali.sup  = pos_idx,
+           quanti.sup = eff_idx,
+           graph = FALSE)
+
+res.mca <- MCA(df_binary,
+               graph = FALSE)
+```
+
+
+### a) Use HCPC() function and apply a PCA based clustering on the pca output that you had from HW1. Decide on number of clusters
+
+The \emph{HCPC()} function has been applied to the PCA results. This approach allows to identify groups of players with similar performance profiles based on the principal components rather than the original correlated variables, ensuring that each dimension contributes equally to the cluster formation.
+
+The function allows direct identification of the optimal number of clusters by analyzing the inertia gain at each hierarchical partition. However, the dendrogram should be examined to ensure the selected solution produces interpretable and meaningful clusters with balanced sizes. In this case, $k=3$, as recommended by the HCPC algorithm, represents the optimal number of clusters, maximizing between-cluster separation while maintaining interpretable player profiles. Note that fewer clusters would merge the two big groups together and lose important patterns, while adding clusters only partitions groups that could be considered a single cohesive segment.
+
+The only potential issue is the presence of one unbalanced cluster, corresponding to the first split in the dendrogram. However, this smaller cluster is meaningful, as it contains the exceptional players identified as outstanding performers in the PCA analysis. These elite players score extremely high on Dimension 1 (overall performance), clearly distinguishing them from the rest. Thus, although numerically smaller, the cluster represents a statistically significant and basketball-relevant group of star players.
+
+```{r}
+res.hcpc.pca <- HCPC(res.pca, nb.clust = -1, consol = TRUE, graph = FALSE)
+
+# Visualize the dendrogram
+fviz_dend(res.hcpc.pca, rect = TRUE, rect_fill = TRUE, main = "Dendrogram - PCA-based Hierarchical Clustering")
+
+# Plot the inertia gain to visualize cluster selection
+plot(res.hcpc.pca, choice = "bar", main = "Inertia gain - determining optimal clusters")
+
+# Visualize clusters in the PCA factor map
+fviz_cluster(res.hcpc.pca, repel = TRUE, show.clust.cent = TRUE,main = "Cluster Visualization on PCA Factor Map (Dim 1 vs Dim 2)")
+
+# 3D visualization
+plot(res.hcpc.pca, choice = "3D.map", main = "3D Cluster Visualization")
+```
+
+### b) Interpret each cluster by using profiling
+
+The PCA-based hierarchical clustering procedure identifies three distinct groups of players with clearly differentiated performance profiles. On the one hand, a chi-square test revealed a significant association between cluster membership and playing position, indicating that the null hypothesis of independence between cluster assignment and position is rejected. Moreover, the ANOVA results support highly significant differences across all major performance variables. Specifically, the null hypothesis of equal means across clusters is rejected for all numerical variables except for the overall field goal percentage. Variables showing the strongest discriminatory power include efficiency, total rebounds, points, and minutes played.
+
+\textbf{Cluster 1: Bench Players and Low-Impact Centers}
+This cluster comprises $13$ players ($26.5\%$ of the sample).
+
+Centers are significantly over-represented in this cluster, comprising $38.5\%$ of the group compared to only $14.3\%$ in the overall sample. Moreover, $71.4\%$ of all Centers in the sample belong to this cluster.
+
+Players in this cluster are characterized by significantly below-average values across the vast majority of performance metrics. Most notably, they play dramatically fewer minutes than the overall sample, which directly impacts their accumulated statistics. Their scoring output is minimal, as is their overall efficiency rating.
+
+The shooting profile of these players reveals a pronounced limitation in perimeter skills, with extremely low three-point field goal percentages and poor free throw shooting. However, they demonstrate relatively strong two-point shooting percentages, suggesting their offensive contributions are limited to close-range attempts near the basket. These is consistent with the fact that centers are usually the players that take two-point shoots.
+
+Therefore, this cluster represents the \textit{deep bench players}. In other words, backup players, mostly centers, who play only a few minutes per game. These players enter the court briefly to give the starting players rest or to address specific game situations.
+
+\textbf{Cluster 2: Standard Rotation Players with Shooting Specialization}
+
+This is the largest cluster, containing $33$ players ($67.3\%$ of the sample). 
+
+Guards are significantly over-represented in this cluster, comprising $51.5\%$ of the group compared to $40.8\%$ in the overall sample. Remarkably, $85\%$ of all Guards belong to this cluster, indicating a strong association between the guard position and this performance profile. Centers, conversely, are notably under-represented.
+
+Players in this cluster exhibit a distinctly perimeter-oriented profile. Their most defining characteristic is strong three-point shooting, indicating specialization in outside shooting. This is complemented by above-average free throw shooting and number of assistances, which typically correlates with perimeter shooting ability. Conversely, these players show below-average two-point field goal percentages and overall field goal percentages, since three-point shootings are most commonly failed.
+
+Notice that the players of these cluster also play more minutes, so it can be seen as the \textit{standard rotation players}. In other words, primarily guards who handle regular playing time and are expected to contribute through perimeter shootings and ball movement. They represent the middle class of professional basketball.
+
+\subsubsection{Cluster 3: Elite Performers}
+
+This cluster contains only 3 players (6.1\% of the sample), representing an extremely selective group of exceptional performers who stand apart from the rest of the tournament participants.
+
+Players in this cluster exhibit elite-level performance across almost every statistical category, demonstrating all-around excellence rather than narrow specialization. NOtice that this cluster is composed of the players who stood out in the PCA factor map, those who excelled in overall performance and workload and playing style.
+
+Interestingly, no single playing position is significantly over-represented in this cluster. This suggests that these players are exceptional regardless of whether they are classified as guards, forwards, or centers.
+
+Hence, this cluster is represented by the \textbf{elite} players.
+
+It should be noted that the forward position is distributed relatively evenly across all three clusters, showing no significant association with any particular performance profile. This indicates that the forward position encompasses a wide range of player types, from deep bench reserves to elite players.
+
+```{r}
+table(res.hcpc.pca$data.clust$clust)
+prop.table(table(res.hcpc.pca$data.clust$clust))
+
+# Cluster description: categorical variables
+res.hcpc.pca$desc.var$test.chi2
+res.hcpc.pca$desc.var$category
+
+# Cluster description: numerical variables
+res.hcpc.pca$desc.var$quanti.var
+res.hcpc.pca$desc.var$quanti
+```
+
+### c) Use HCPC() function and apply a MCA based clustering on the multiple correspondence analysis output that you had from HW1. Decide on number of clusters
+
+The \emph{HCPC()} function has been applied to the MCA results. This approach allows to identify groups of players with similar categorical performance patterns based on the MCA dimensions.
+
+The algorithm again selects $k=3$ as the optimal number of clusters. This choice is fully consistent with the inertia-gain bar plot, which displays a clear elbow at $k=3$. Inspection of the dendrogram further supports this result: using one fewer cluster would merge the two largest groups into an overly heterogeneous cluster combining players with distinct categorical profiles, whereas increasing to $k=4$ would split the green cluster, producing an excessively small and unbalanced group.
+
+```{r}
+res.hcpc.mca <- HCPC(res.mca, nb.clust = -1, consol = TRUE, graph = FALSE)
+
+# Visualize the dendrogram
+fviz_dend(res.hcpc.mca, rect = TRUE, rect_fill = TRUE, main = "Dendrogram - MCA-based Hierarchical Clustering")
+
+# Plot the inertia gain to visualize cluster selection
+plot(res.hcpc.mca, choice = "bar", main = "Inertia gain - determining optimal clusters")
+
+# Visualize clusters in the PCA factor map
+fviz_cluster(res.hcpc.mca, repel = TRUE, show.clust.cent = TRUE,main = "Cluster Visualization on MCA Factor Map (Dim 1 vs Dim 2)")
+
+# 3D visualization
+plot(res.hcpc.mca, choice = "3D.map", main = "3D Cluster Visualization")
+```
+
+### d) Interpret each cluster by using profiling
+
+
 
 
 
