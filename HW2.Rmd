@@ -174,7 +174,9 @@ par(xpd = FALSE, mar = c(5, 4, 4, 2))
 
 ### b) How many clusters do you think exist in the data considering the dendrogram? (0.5p)
 
-Based on the Ward dendrogram, the most reasonable choice is **$3$ clusters**. This cut corresponds to a height where the fusion jumps noticeably, separating the tree into three large and well-balanced groups. Cutting at $4$ or $5$ clusters would split already compact subgroups, whereas cutting at $2$ would merge distinct branches. Therefore, the dendrogram structure suggests that the data forms $3$ clusters.
+Based on the Ward dendrogram, a solution with **$4$ clusters** appears to be the most appropriate. At this level, the dendrogram is cut just before a clear increase in fusion height, resulting in four well-separated and reasonably balanced groups. A cut at $3$ clusters would still merge branches that show noticeable internal variability, while increasing the number of clusters to $5$ would lead to an unnecessary fragmentation of already compact groups. 
+For this reason, the dendrogram suggests that the underlying structure of the data is best described by **$4$ clusters**.
+
 
 
 ## 3. K means clustering
@@ -193,13 +195,20 @@ Moreover, the ratio between the between-cluster sum of squares and the total sum
 ```{r}
 ## Applying k-means algorithm for different number of clusters 
 set.seed(123)
+
 aux <- c()
 for (i in 2:6){
-  k <- kmeans(dfscaled, centers=i, nstart=25)
+  k <- kmeans(dfscaled, centers = i, nstart = 25)
   aux[i-1] <- k$tot.withinss 
 }
-plot(2:6, aux, xlab="Number of Clusters", ylab="TWSS", type="l", main="TWSS vs. number of clusters")
-# Optimum point: k=4
+
+plot(2:6, aux,
+     xlab = "Number of Clusters",
+     ylab = "TWSS",
+     type = "l",
+     main = "TWSS vs. number of clusters")
+
+points(4, aux[4 - 1], pch = 19, cex = 1.5, col = "red") # Optimum point: k=4
 
 # k=3
 k3 <- kmeans(dfscaled, centers = 3, nstart = 25) # 3 number of clusters
@@ -235,6 +244,7 @@ for (i in 2:10){
   aux[i-1] <- ((k$betweenss)*(nrow(dfscaled)-i))/((k$tot.withinss)*(i-1))
 }
 plot(2:10, aux, xlab="Number of Clusters", ylab="Pseudo-F", type="l", main="Pseudo F Index")
+points(4, aux[4 - 1], pch = 19, cex = 1.5, col = "red")
 # max Pseudo F: 4 clusters
 ```
 
@@ -282,6 +292,8 @@ To sum up, although the Silhouette Index shows a slightly higher average score f
 
 
 ### b) Apply k-means clustering using the number of clusters that you decided. Interpret each cluster by making a descriptive statistics table. (1.5p)
+
+Based on the results obtained in the previous section, $k=4$ is selected as the optimal number of clusters, and the k-means algorithm is applied to the scaled dataset. The resulting clusters are interpreted using descriptive statistics as follows:
 
 - **Cluster 1:** Low-impact perimeter players
 This group gathers players with moderate playing time ($≈15$ minutes) and overall modest statistical contribution. Their scoring efficiency is average across FG, 2PT and 3PT percentages, and they provide limited rebounding ($≈2$ REB) and moderate assists ($≈1.5$ AST).
