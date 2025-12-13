@@ -306,29 +306,28 @@ points(4, aux[4 - 1], pch = 19, cex = 1.5, col = "red")
 
 Finally, the \textbf{Silhouette Index} has been computed using both the \emph{silhouette()} function from the \emph{cluster} package and the \emph{fastkmed()} function from the \emph{kmed} package.
 
-The Silhouette Index yields similar results for $k=3$ and $k=4$, with average widths of $0.22$ and $0.21$, respectively. Although $k=3$ achieves a slightly higher silhouette value, the difference is marginal and both solutions exhibit comparable cohesion. Moreover, the silhouette structure of $k=4$ does not indicate poorly defined clusters, and remains consistent with the separation patterns observed in hierarchical clustering.
-Therefore, the Silhouette Index suggests that both $k=3$ and $k=4$ are acceptable, but does not provide strong evidence against choosing $k=4$ as indicated by the TWSS and Pseudo-F criteria.
+Using the \emph{silhouette()} function, the average silhouette widths obtained for $k=3$ and $k=4$ are $0.22$ and $0.21$, respectively. Although $k=3$ achieves a slightly higher value, the difference is marginal and both solutions exhibit comparable cohesion. 
+In contrast, the silhouette analysis based on \emph{fastkmed()} indicates better performance for $k=4$, with higher and more stable silhouette values across clusters.
+
+Overall, the Silhouette Index does not provide a strong preference for either solution, but it does not contradict the four-cluster partition. Given the clearer separation indicated by the TWSS Elbow method and the Pseudo-F Index, $k=4$ is the most meaningful partition. The four-cluster solution provides a better separation between groups ($BSS/TSS=0.544$), a clearer structural interpretation, and it is fully consistent with the hierarchical clustering results. For these reasons, $k=4$ has been selected as the optimal number of clusters.
 
 ```{r}
 ## A) Silhouette function from cluster library
-
 # k=3
 si <- silhouette(k3$cluster, d)
-plot(si) # max silhouette index: 3rd cluster
+plot(si) # higher average width
 
 # k=4
 si <- silhouette(k4$cluster, d)
-plot(si) # max silhouette index: 4th cluster
+plot(si) 
 
 
 ## B) Silhouette function from kmed library
-
 # k=3
 res <- fastkmed(d, 3) 
 silhouette <- sil(d, res$medoid, res$cluster)
 silhouette$result
 silhouette$plot 
-# k=3 higher silhouette value
 
 # k=4
 res <- fastkmed(d, 4)
@@ -337,8 +336,6 @@ silhouette$result
 silhouette$plot
 # k=4 higher silhouette value
 ```
-
-To sum up, although the Silhouette Index shows a slightly higher average score for $k=3$, both the TWSS Elbow method and the Pseudo-F Index support $k=4$ as the most meaningful partition. The four-cluster solution provides a better separation between groups ($BSS/TSS=0.544$), a clearer structural interpretation, and it is fully consistent with the hierarchical clustering results. For these reasons, $k=4$ has been selected as the optimal number of clusters.
 
 ### b) Apply k-means clustering using the number of clusters that you decided. Interpret each cluster by making a descriptive statistics table
 
