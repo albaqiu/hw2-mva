@@ -571,7 +571,7 @@ The Shapiro-Wilk normality test rejects the null hypothesis for all variables ex
 
 FG does not pass the Shapiro-Wilk normality test, since its p-value is 0.01795. However, since it is not as close to zero as it is the case for the other variables, and its histogram is bell-shaped, we will consider it to be approximately normal for this analysis.
 ```{r}
-### Assumption 1: Normality ####
+## Assumption 1: Normality
 ## Checking histogram, qqplots and shapiro Willk's test results
 
 for (i in 2:16){
@@ -584,7 +584,7 @@ hist(df2[,i], main=colnames(df2)[i])
 Since we will work only with the approximately normal variables, the variables we will use for this analysis are: MIN, FG, TwoPt.FG and PF.  
 
 ```{r}
-## Dataframe for DA
+# Dataframe for DA
 dfdisc <- df2[,c(1:4,11)]
 ```
 
@@ -593,8 +593,8 @@ In order to test the homogeneity of variance for the different positions between
 Since the p-value we obtain is significant (0.00225), the null hypothesis of homogeneity of variances is rejected, after examining the boxplots, we observe that there's obvious homogeneity differences in all variables.
 
 ```{r}
-##### Assumption 2: Homogenity of Variance ####
-## Box's M test for testing variance covariance matrices
+## Assumption 2: Homogenity of Variance
+# Box's M test for testing variance covariance matrices
 # install.packages("biotools")
 library(biotools)
 ?boxM
@@ -606,7 +606,7 @@ boxplot(dfdisc[,4]~dfdisc$Position) # no variance homogeneity in TwoPt.FG
 boxplot(dfdisc[,5]~dfdisc$Position) # no variance homogeneity in PF
 ```
 ```{r}
-##### Correlation ###
+# Correlation 
 cor(dfdisc[,2:5])
 plot(dfdisc[,2:5])
 ```
@@ -626,12 +626,11 @@ TwoPt.FG and PF.
 
 ```{r}
 # Quadratic Discriminant Analysis 
-
 # Full model
 # qda.fit<-qda (Position ~ MIN + FG + TwoPt.FG + PF , data = dfdisc)
 # qda.fit
 
-##Stepwise Classification
+# Stepwise Classification
 library(klaR)
 set.seed(1234)
 posstep<-stepclass(dfdisc[,2:5],dfdisc$Position,method="qda",direction="backward", criterion="CR") 
@@ -705,11 +704,9 @@ ntilde <- sum(diag(tab2))
 
 # Q statistic as defined in the lecture notes:
 # Q = ((n - ntilde)^2) / (n * (k - 1))
-Q <- (n - ntilde)^2 / (n * (k - 1))
-Q
+Q <- (n - ntilde)^2 / (n * (k - 1)); Q
 
 # p-value using chi-squared distribution with (k - 1) degrees of freedom
-pvalue <- 1 - pchisq(Q, df = k - 1)
-pvalue
+pvalue <- 1 - pchisq(Q, df = k - 1); pvalue
 ```
 
