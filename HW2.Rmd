@@ -554,6 +554,7 @@ prop.table(table(res.hcpc.mca$data.clust$clust))
 res.hcpc.mca$desc.var$test.chi2
 res.hcpc.mca$desc.var$category
 ```
+
 ## 5. Conclusion
 
 Compare the results of clustering methods that you applied and make a final comment on which clustering method would you prefer and why.
@@ -571,20 +572,21 @@ The Shapiro-Wilk normality test rejects the null hypothesis for all variables ex
   - TwoPt.FG, where its p-value is 0.1178. 
   - PF, where its p-value is 0.3919
 
-FG does not pass the Shapiro-Wilk normality test, since its p-value is 0.01795. However, since it is not as close to zero as it is the case for the other variables, and its histogram is bell-shaped, we will consider it to be approximately normal for this analysis.
+FG does not pass the Shapiro-Wilk normality test, since its p-value is 0.01795. However, using the Kolmogorov test, the normality is not rejected, this, adding the fact that its histogram is approximately bell-shaped, we will consider it to be approximately normal for this analysis.
 ```{r}
-### Assumption 1: Normality ####
-## Checking histogram, qqplots and shapiro Willk's test results
+# Assumption 1: Normality
 
+## Checking histogram, qqplots and shapiro Willk's test results
 for (i in 2:16){
   print(colnames(df2)[i])
   print(shapiro.test(df2[,i]))
+  print(ks.test(df2[,i], "pnorm", mean=mean(df2[,i]), sd=sd(df2[,i])))
 qqnorm(df2[,i],main=colnames(df2)[i])
 hist(df2[,i], main=colnames(df2)[i])
 }
 ```
-Since we will work only with the approximately normal variables, the variables we will use for this analysis are: MIN, FG, TwoPt.FG and PF.  
 
+Since we will work only with the approximately normal variables, the variables we will use for this analysis are: MIN, FG, TwoPt.FG and PF.  
 ```{r}
 ## Dataframe for DA
 dfdisc <- df2[,c(1:4,11)]
@@ -595,7 +597,8 @@ In order to test the homogeneity of variance for the different positions between
 Since the p-value we obtain is significant (0.00225), the null hypothesis of homogeneity of variances is rejected, after examining the boxplots, we observe that there's obvious homogeneity differences in all variables.
 
 ```{r}
-##### Assumption 2: Homogenity of Variance ####
+# Assumption 2: Homogeneity of Variance
+
 ## Box's M test for testing variance covariance matrices
 # install.packages("biotools")
 library(biotools)
@@ -607,6 +610,7 @@ boxplot(dfdisc[,3]~dfdisc$Position) # no variance homogeneity in FG
 boxplot(dfdisc[,4]~dfdisc$Position) # no variance homogeneity in TwoPt.FG
 boxplot(dfdisc[,5]~dfdisc$Position) # no variance homogeneity in PF
 ```
+
 ```{r}
 ##### Correlation ###
 cor(dfdisc[,2:5])
@@ -623,48 +627,24 @@ There are 3 different types of discriminant models:
 The variables we are working with can be considered normal but do not have a homogeneity of variances.
 Besides, they cannot be considered to be independent, as some of the variables show significant correlations, such as FG and TwoPt.FG (0.78). Therefore, the proper model to use on this data set is QDA.
 
-In order to see which model best classifies the player's position, we used a Stepwise Classification to see which variables are needed. The result of this method shows how the model obtains the best correctness rate by using only 2 out of the 4 variables:
-TwoPt.FG and PF. 
-
 ```{r}
-########################################
-#### Quadratic Discriminant Analysis ###
-########################################
-
-# Full model
-# qda.fit<-qda (Position ~ MIN + FG + TwoPt.FG + PF , data = dfdisc)
-# qda.fit
-
-##Stepwise Classification
-library(klaR)
-set.seed(1234)
-posstep<-stepclass(dfdisc[,2:5],dfdisc$Position,method="qda",direction="backward", criterion="CR") 
-posstep
-
-summary(posstep)
-posstep$process
-posstep$model
-posstep$result.pm
+qda.fit<-qda (Position ~ MIN + TwoPt.FG + PF + FG , data = dfdisc)
+qda.fit$prior
 ```
 
 
 ### c) Make a table cross classifying real and predicted values and interpret correct classification rates. (1p)
-The contingency table (confusion matrix), where rows represent the true classes and columns the predicted classes, shows that the model performs better when classifying Forwards and Guards: each group has 17 correctly classified observations out of 20. In contrast, the model struggles with Centers, identifying correctly only 3 out of 7 and misclassifying most of them as Forwards.
+The contingency table (confusion matrix), where rows represent the true classes and columns the predicted classes, shows that the model performs better when classifying Guards, they have 18 correctly classified observations out of 20. Then, the second best classified group is Forward, with 15 out of 22 correct classifications. In contrast, the model struggles with Centers, identifying correctly only 4 out of 7 and misclassifying most of them as Forwards.
 
-The overall Correct Classification Rate (CCR) is 75.5%, and the class-specific CCRs confirm the unequal performance across groups: Centers are the worst predicted class (42.8%), whereas Forwards and Guards achieve higher CCRs of 77.2% and 85%, respectively.
+The overall Correct Classification Rate (CCR) is 75.5%, and the class-specific CCRs confirm the unequal performance across groups: Centers are the worst predicted class (57.14%), then, the Forwards achieve a CCR of 68.18% and lastly, Guards achieve a CCR of 90%.
 
 For comparison, the baseline accuracy, computed from the class proportions, is 38.86%. This represents the accuracy expected by chance if predictions were made randomly but respecting the observed class proportions. The model's CCR therefore improves substantially in comparison to the baseline accuracy.
 
 ```{r}
-### QDA Function###
-qda.fit<-qda (Position ~ TwoPt.FG + PF , data = dfdisc)
-qda.fit$prior
-
 # Group predictions
-pospred<-predict(qda.fit)
-names(pospred)
+pospred <- predict(qda.fit)
 
-# Class and posterior prob. predictions 
+# Class and posterior probability predictions 
 pospred$class
 pospred$posterior
 
@@ -679,15 +659,8 @@ classrate
 # CCR among groups
 diag(prop.table(tab2, 1))
 
-# Total CCR
-sum(diag(prop.table(tab2)))
-
 # Prediction accuracy p1^2+p^2
 qda.fit$prior[1]^2 + qda.fit$prior[2]^2+qda.fit$prior[3]^2
-
-# Comparison 
-comp<-cbind(dfdisc$Position,pospred$class)
-comp
 ```
 
 
@@ -698,22 +671,17 @@ We can test whether the classification accuracy of the discriminant function is 
 In our case, the test outputs a p-value of 0.48, we fail to reject the null hypothesis, this indicates that the improvement in classification accuracy is not statistically significant when compared against a baseline of random guessing with equal priors.
 
 ```{r}
-# Total number of observations
-n <- sum(tab2)
-
-# Number of classes (number of rows in the confusion matrix)
-k <- nrow(tab2)
-
-# Number of correctly classified observations (sum of the diagonal)
-ntilde <- sum(diag(tab2))
+n <- sum(tab2) # Total number of observations
+k <- nrow(tab2) # Number of classes (number of rows in the confusion matrix)
+ntilde <- sum(diag(tab2)) # Number of correctly classified observations (sum of the diagonal)
 
 # Q statistic as defined in the lecture notes:
-# Q = ((n - ntilde)^2) / (n * (k - 1))
-Q <- (n - ntilde)^2 / (n * (k - 1))
-Q
+Q <- (n - ntilde)^2 / (n * (k - 1)); Q
 
 # p-value using chi-squared distribution with (k - 1) degrees of freedom
-pvalue <- 1 - pchisq(Q, df = k - 1)
-pvalue
+pvalue <- 1 - pchisq(Q, df = k - 1); pvalue
+
+crit <- qchisq(0.95, df = k - 1); 
+Q > crit # False
 ```
 
