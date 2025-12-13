@@ -232,7 +232,7 @@ par(xpd = FALSE, mar = c(5, 4, 4, 2))
 
 ### b) How many clusters do you think exist in the data considering the dendrogram?
 
-Based on the Ward dendrogram, a solution with \textbf{$4$ clusters} appears to be the most appropriate. At this level, the dendrogram is cut just before a clear increase in fusion height, resulting in four well-separated and reasonably balanced groups. A cut at $3$ clusters would still merge branches that show noticeable internal variability, while increasing the number of clusters to $5$ would lead to an unnecessary fragmentation of already compact groups. 
+Based on the Ward dendrogram, a solution with \textbf{$4$ clusters} appears to be the most appropriate. The dendrogram is cut at a level where four groups remain clearly separated and internally coherent, while avoiding the merging of clusters that are substantially different. A cut at $3$ clusters would still merge branches that show noticeable internal variability, while increasing the number of clusters to $5$ would lead to an unnecessary fragmentation of already compact groups. 
 For this reason, the dendrogram suggests that the underlying structure of the data is best described by \textbf{$4$ clusters}.
 
 ## 3. K means clustering
@@ -335,31 +335,31 @@ res <- fastkmed(d, 4)
 silhouette <- sil(d, res$medoid, res$cluster)
 silhouette$result
 silhouette$plot
-# k=3 higher silhouette value
+# k=4 higher silhouette value
 ```
 
 To sum up, although the Silhouette Index shows a slightly higher average score for $k=3$, both the TWSS Elbow method and the Pseudo-F Index support $k=4$ as the most meaningful partition. The four-cluster solution provides a better separation between groups ($BSS/TSS=0.544$), a clearer structural interpretation, and it is fully consistent with the hierarchical clustering results. For these reasons, $k=4$ has been selected as the optimal number of clusters.
 
 ### b) Apply k-means clustering using the number of clusters that you decided. Interpret each cluster by making a descriptive statistics table
 
-Based on the results obtained in the previous section, $k=4$ has been selected as the optimal number of clusters, and the k-means algorithm has been applied to the scaled dataset. The resulting clusters have been interpreted using descriptive statistics as follows:
+Based on the results obtained in the previous sections, $k=4$ has been selected as the optimal number of clusters, and the k-means algorithm has been applied to the scaled dataset. The resulting clusters have been interpreted using descriptive statistics as follows:
 
-- \textbf{Cluster 1:} Low-impact perimeter players
-This group gathers players with moderate playing time ($≈15$ minutes) and overall modest statistical contribution. Their scoring efficiency is average across FG, 2PT and 3PT percentages, and they provide limited rebounding ($≈2$ REB) and moderate assists ($≈1.5$ AST).
+\textbf{- Cluster 1: Low-impact perimeter players} 
+This group gathers players with moderate playing time ($\approx 15$ minutes) and overall modest statistical contribution. Their scoring efficiency is average across FG, 2PT and 3PT percentages, and they provide limited rebounding ($\approx 2$ REB) and moderate assists ($\approx 1.5$ AST).
 They may represent role players, typically perimeter players who contribute in short bursts without being primary scoring options.
 
-- \textbf{Cluster 2:} Efficient specialists with limited minutes
-Players in this cluster show the best shooting percentages in the dataset, especially 2PT FG ($≈80%$), but they play the fewest minutes ($≈10$).
-Their statistical output is low in totals due to reduced court time, but their efficiency is notably high relative to minutes ($EFF ≈ 4.8$).
+\textbf{- Cluster 2: Efficient specialists with limited minutes}
+Players in this cluster show the best shooting percentages in the dataset, especially 2PT FG ($\approx 80%$), but they play the fewest minutes ($\approx 10$).
+Their statistical output is low in totals due to reduced court time, but their efficiency is notably high relative to minutes ($EFF \approx 4.8$).
 This group may corresponds to situational players or bench specialists, particularly big men and finishing forwards, who produce efficiently in very short rotations.
 
-- \textfb{Cluster 3:} Dominant high-usage players (3 players: all Forwards)
-This small but meaningful cluster contains players with very high minutes ($≈30$) and elite production across all categories: $REB ≈ 9.6$, $AST ≈ 4.3$, $EFF ≈ 28$ and $PTS ≈ 24$.
+\textfb{- Cluster 3: Dominant high-usage players (3 players: all Forwards)}
+This small but meaningful cluster contains players with very high minutes ($\approx 30$) and elite production across all categories: $REB \approx 9.6$, $AST \approx 4.3$, $EFF \approx 28$ and $PTS \approx 24$.
 They are the star players of the tournament, acting as primary scoring options and offensive hubs for their teams.
 The fact that only three players fall into this category reflects how statistically exceptional they are compared with the rest of the dataset.
 
-- \textbf{Cluster 4:} Balanced starters with strong contribution
-Players in this cluster have high playing time ($≈24$ minutes) and solid all-around contributions: 3PT FG highest among clusters ($≈43%$), $AST ≈ 3$, $PTS ≈ 11$ and $EFF ≈ 13$.
+\textbf{- Cluster 4: Balanced starters with strong contribution}
+Players in this cluster have high playing time ($\approx 24$ minutes) and solid all-around contributions: 3PT FG highest among clusters ($\approx 43\%$), $AST \approx 3$, $PTS,\approx 11$ and $EFF \approx 13$.
 This group represents core rotation starters, typically perimeter players and forwards who contribute in scoring, playmaking, and defense. They are not as dominant as Cluster 3 but form the backbone of competitive teams.
 
 ```{r}
@@ -426,7 +426,7 @@ res.hcpc.pca <- HCPC(res.pca, nb.clust = -1, consol = TRUE, graph = FALSE)
 fviz_dend(res.hcpc.pca, rect = TRUE, rect_fill = TRUE, main = "Dendrogram - PCA-based Hierarchical Clustering")
 
 # Plot the inertia gain to visualize cluster selection
-plot(res.hcpc.pca, choice = "bar", main = "Inertia gain - determining optimal clusters")
+plot(res.hcpc.pca, choice = "bar", main = "Inertia gain on PCA")
 
 # Visualize clusters in the PCA factor map
 fviz_cluster(res.hcpc.pca, repel = TRUE, show.clust.cent = TRUE,main = "Cluster Visualization on PCA Factor Map (Dim 1 vs Dim 2)")
@@ -439,7 +439,7 @@ plot(res.hcpc.pca, choice = "3D.map", main = "3D Cluster Visualization")
 
 The PCA-based hierarchical clustering procedure identifies three distinct groups of players with clearly differentiated performance profiles. On the one hand, a chi-square test revealed a significant association between cluster membership and playing position, indicating that the null hypothesis of independence between cluster assignment and position is rejected. Moreover, the ANOVA results support highly significant differences across all major performance variables. Specifically, the null hypothesis of equal means across clusters is rejected for all numerical variables except for the overall field goal percentage. Variables showing the strongest discriminatory power include efficiency, total rebounds, points, and minutes played.
 
-\textbf{Cluster 1: Bench Players and Low-Impact Centers}
+\textbf{- Cluster 1: Bench Players and Low-Impact Centers}
 This cluster comprises $13$ players ($26.5\%$ of the sample).
 
 Centers are significantly over-represented in this cluster, comprising $38.5\%$ of the group compared to only $14.3\%$ in the overall sample. Moreover, $71.4\%$ of all Centers in the sample belong to this cluster.
@@ -450,19 +450,19 @@ The shooting profile of these players reveals a pronounced limitation in perimet
 
 Therefore, this cluster represents the \textit{deep bench players}. In other words, backup players, mostly centers, who play only a few minutes per game. These players enter the court briefly to give the starting players rest or to address specific game situations.
 
-\textbf{Cluster 2: Standard Rotation Players with Shooting Specialization}
+\textbf{- Cluster 2: Standard Rotation Players with Shooting Specialization}
 
 This is the largest cluster, containing $33$ players ($67.3\%$ of the sample). 
 
 Guards are significantly over-represented in this cluster, comprising $51.5\%$ of the group compared to $40.8\%$ in the overall sample. Remarkably, $85\%$ of all Guards belong to this cluster, indicating a strong association between the guard position and this performance profile. Centers, conversely, are notably under-represented.
 
-Players in this cluster exhibit a distinctly perimeter-oriented profile. Their most defining characteristic is strong three-point shooting, indicating specialization in outside shooting. This is complemented by above-average free throw shooting and number of assistances, which typically correlates with perimeter shooting ability. Conversely, these players show below-average two-point field goal percentages and overall field goal percentages, since three-point shootings are most commonly failed.
+Players in this cluster display a clear perimeter-oriented profile. Their most defining characteristic is strong three-point shooting, indicating specialization in outside shooting. This is complemented by above-average free throw shooting and number of assistances, which typically correlates with perimeter shooting ability. Conversely, these players show below-average two-point field goal percentages and overall field goal percentages, since three-point shootings are most commonly failed. Notice that the players of these cluster also play more minutes, so it can be seen as the standard rotation players. 
 
-Notice that the players of these cluster also play more minutes, so it can be seen as the \textit{standard rotation players}. In other words, primarily guards who handle regular playing time and are expected to contribute through perimeter shootings and ball movement. They represent the middle class of professional basketball.
+Therefore, this cluster represents \textbf{standard rotation} players who play above-average minutes and \textbf{specialize in three-point shooting}. In other words, primarily guards who contribute through perimeter shooting and ball movement rather than all-around production. They represent the middle class of professional basketball.
 
-\subsubsection{Cluster 3: Elite Performers}
+\textbf{- Cluster 3: Elite Performers}
 
-This cluster contains only 3 players (6.1\% of the sample), representing an extremely selective group of exceptional performers who stand apart from the rest of the tournament participants.
+This cluster contains only $3$ players ($6.1\%$ of the sample), representing an extremely selective group of exceptional performers who stand apart from the rest of the tournament participants.
 
 Players in this cluster exhibit elite-level performance across almost every statistical category, demonstrating all-around excellence rather than narrow specialization. NOtice that this cluster is composed of the players who stood out in the PCA factor map, those who excelled in overall performance and workload and playing style.
 
@@ -471,6 +471,8 @@ Interestingly, no single playing position is significantly over-represented in t
 Hence, this cluster is represented by the \textbf{elite} players.
 
 It should be noted that the forward position is distributed relatively evenly across all three clusters, showing no significant association with any particular performance profile. This indicates that the forward position encompasses a wide range of player types, from deep bench reserves to elite players.
+
+In conclusion, as observed on the Factor Map, the first cluster corresponds to players with low overall performance and productivity, located on the left side of the first dimension axis. The second cluster consists of players with average overall performance and productivity, positioned near the center of the graph. Finally, the third cluster includes the outstanding players, who exhibit the highest overall performance and productivity.
 
 ```{r}
 table(res.hcpc.pca$data.clust$clust)
@@ -498,7 +500,7 @@ res.hcpc.mca <- HCPC(res.mca, nb.clust = -1, consol = TRUE, graph = FALSE)
 fviz_dend(res.hcpc.mca, rect = TRUE, rect_fill = TRUE, main = "Dendrogram - MCA-based Hierarchical Clustering")
 
 # Plot the inertia gain to visualize cluster selection
-plot(res.hcpc.mca, choice = "bar", main = "Inertia gain - determining optimal clusters")
+plot(res.hcpc.mca, choice = "bar", main = "Inertia gain on MCA")
 
 # Visualize clusters in the PCA factor map
 fviz_cluster(res.hcpc.mca, repel = TRUE, show.clust.cent = TRUE,main = "Cluster Visualization on MCA Factor Map (Dim 1 vs Dim 2)")
@@ -509,14 +511,52 @@ plot(res.hcpc.mca, choice = "3D.map", main = "3D Cluster Visualization")
 
 ### d) Interpret each cluster by using profiling
 
+The MCA-based hierarchical clustering procedure identifies three distinct groups of players based on their categorical performance patterns. The validity of this partition is supported by highly significant chi-square tests of independence for all performance categories, indicating that the null hypothesis of equal distribution across clusters is rejected for all categorized performance variables. In addition, playing position is significantly associated with cluster assignment, further supporting the meaningfulness of the identified groups.
+
+\textbf{- Cluster 1: Bench Players and Low-Impact Centers}
+
+This cluster comprises $18$ players ($36.7\%$ of the sample).
+
+Centers are significantly over-represented in this cluster, comprising $33.33\%$ of the group compared to only $14.3\%$ in the overall sample. This indicates that $85.5\%$ of all centers in the tournament belong to this cluster.
+
+Players in this cluster consistently fall below the sample average across most performance metrics. For instance, $94.44\%$ of players in the cluster have below-average minutes played. As expected, this limited playing time extends to other performance dimensions: below-average categories for PTS, TO, EFF, AST, and STL are all strongly over-represented in this cluster, indicating that these centers generally perform below the sample average in most metrics. Consequently, it is logical that this cluster is under-represented in the above-average categories for the same performance variables. Interestingly, the only performance dimension in which they are over-represented is two-point shooting, which aligns with the typical role of centers, who often focus on scoring near the basket rather than other aspects of the game.
+
+It is worth noting that minutes played is no longer a dominant discriminating variable, as it was in the PCA-based clustering. Compared to the PCA results, this indicates that the MCA-based approach captures a broader range of performance characteristics, rather than focusing primarily on the most extreme cases.
+
+Hence, this cluster represents \textit{bench players with minimal court impact}, predominantly backup centers who receive limited playing time and contribute minimally to team statistics, primarily through two-point scoring near the basket.
+
+\textbf{- Cluster 2: Perimeter Shooting Specialists}
+
+This cluster contains $19$ players ($38.8\%$ of the sample).
+
+Guards dominate this cluster, comprising $73.68\%$ of the group compared to $40.8\%$ in the overall sample. Remarkably, $70\%$ of all guards in the tournament belong to this cluster. Conversely, centers are completely absent from this cluster, and forwards are under-represented.
+
+The players in this cluster are clearly over-represented by above average perimeter skills and below average interior contributions. Players in this cluster exhibit exceptional perimeter specialization. Remarkably, $100\%$ of cluster members shoot above average from three-point range. This three-point excellence extends to free throw shooting, where $84.2\%$ shoot above average, reflecting consistent shooting mechanics. However, this perimeter orientation creates systematic deficiencies in interior play. Nearly all players shoot below average on two-point attempts. Similarly, the vast majority fall below average in rebounds (total, offensive, and defensive), blocks, and overall field goal percentage, indicating minimal contribution in areas requiring interior presence or physical play near the basket. Consequently, this cluster shows corresponding under-representation in above-average interior categories.
+
+Hence, this cluster represents \textbf{perimeter specialists}, whose value comes almost entirely from outside shooting. These players space the floor, shoot open three-pointers efficiently, and contribute primarily through perimeter skills. However, they provide minimal impact in the interior game. This pattern aligns perfectly with the typical role of guards, who focus on outside scoring, playmaking, and spacing rather than interior presence.
+
+\textbf{- Cluster 3: Elite Performers}
+
+This cluster contains $12$ players ($24.5\%$ of the sample).
+
+Forwards are significantly over-represented in this cluster, comprising $75\%$ of the group. In fact, $41\%$ of the forwards in the sample are represented in this group.
+
+Players in this cluster exhibit systematic above-average performance across the vast majority of statistical categories, demonstrating all-around excellence. For example, all players with above-average REB, DREB, EFF and MIN are represented in this cluster, indicating a strong association between high performance in these metrics and this cluster profile. Every player in this cluster exceeds the sample mean on these fundamental measures of impact and usage. As expected, they are under-represented on the below-average category for these variables. The only exceptions are three-point shooting and overall field goal percentage, where the cluster does not show particularly high representation. This indicates that these elite players achieve their dominance through overall contribution and effectiveness across multiple aspects of the game rather than through exceptional shooting efficiency alone.
+
+This aligns with basketball logic. Forwards often record above-average statistics across multiple categories because they operate in different areas of the court: they can rebound like centers, assist like guards, and score from various distances. Guards tend to specialize in assists and perimeter shooting but contribute less to rebounding and interior defense, while centers dominate rebounding and blocks but have less impact on assists and outside scoring. Positioned between these extremes, forwards are able to perform above average across a wide range of statistical categories. Therefore, this cluster comprises \textit{elite all-around performers}, who contribute across multiple dimensions and carry significant offensive and defensive responsibilities.
 
 
+```{r}
+table(res.hcpc.mca$data.clust$clust)
+prop.table(table(res.hcpc.mca$data.clust$clust))
 
-
+# Cluster description: categorical variables
+res.hcpc.mca$desc.var$test.chi2
+res.hcpc.mca$desc.var$category
+```
 ## 5. Conclusion
 
-Compare the results of clustering methods that you applied and make a final comment on which clustering method would you prefer and why. (0.5p)
-
+Compare the results of clustering methods that you applied and make a final comment on which clustering method would you prefer and why.
 
 ## 6. Discriminant Analysis
 
