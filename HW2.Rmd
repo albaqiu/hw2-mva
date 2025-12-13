@@ -551,6 +551,7 @@ prop.table(table(res.hcpc.mca$data.clust$clust))
 res.hcpc.mca$desc.var$test.chi2
 res.hcpc.mca$desc.var$category
 ```
+
 ## 5. Conclusion
 
 Compare the results of clustering methods that you applied and make a final comment on which clustering method would you prefer and why.
@@ -624,9 +625,7 @@ In order to see which model best classifies the player's position, we used a Ste
 TwoPt.FG and PF. 
 
 ```{r}
-########################################
-#### Quadratic Discriminant Analysis ###
-########################################
+# Quadratic Discriminant Analysis 
 
 # Full model
 # qda.fit<-qda (Position ~ MIN + FG + TwoPt.FG + PF , data = dfdisc)
@@ -653,7 +652,7 @@ The overall Correct Classification Rate (CCR) is 75.5%, and the class-specific C
 For comparison, the baseline accuracy, computed from the class proportions, is 38.86%. This represents the accuracy expected by chance if predictions were made randomly but respecting the observed class proportions. The model's CCR therefore improves substantially in comparison to the baseline accuracy.
 
 ```{r}
-### QDA Function###
+# QDA Function
 qda.fit<-qda (Position ~ TwoPt.FG + PF , data = dfdisc)
 qda.fit$prior
 
