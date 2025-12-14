@@ -319,7 +319,7 @@ plot(si) # higher average width
 
 # k=4
 si <- silhouette(k4$cluster, d)
-plot(si) 
+plot(si)
 
 
 ## B) Silhouette function from kmed library
@@ -327,7 +327,7 @@ plot(si)
 res <- fastkmed(d, 3) 
 silhouette <- sil(d, res$medoid, res$cluster)
 silhouette$result
-silhouette$plot 
+silhouette$plot
 
 # k=4
 res <- fastkmed(d, 4)
@@ -341,9 +341,30 @@ silhouette$plot
 
 Based on the results obtained in the previous sections, $k=4$ has been selected as the optimal number of clusters, and the k-means algorithm has been applied to the scaled dataset. The resulting clusters have been interpreted using descriptive statistics as follows:
 
-\textbf{- Cluster 1: Low-impact perimeter players} 
+######## berta
+
+\textbf{Cluster 1: Low-Impact Bench Players}
+
+This cluster represents the lowest-impact players, characterized by extremely limited playing time and minimal statistical production across all categories. The cluster is dominated by centers ($36.4\%$) and forwards ($45.5\%$), with only 2 guards ($18.2\%$), reflecting an interior-oriented composition. While they show relatively high two-point shooting efficiency ($79.9\%$), this reflects shot selection rather than offensive skill, as evidenced by their very poor three-point shooting and free throw shooting. Their contributions to rebounds, assists, steals, and blocks are all minimal, resulting in the lowest efficiency rating and scoring output. These are, indeed, deep bench reserves, who see action only in limited situations to provide size or rest for starters.
+
+\textbf{Cluster 2: Perimeter Role Players}
+
+This cluster captures perimeter-oriented players with moderate playing time who specialize in outside shooting. The cluster is heavily dominated by guards ($50.0\%$) and forwards ($38.9\%$), reflecting a clear perimeter orientation. Their profile shows below-average overall field goal percentage and poor two-point shooting, but respectable three-point shooting, indicating they operate primarily away from the basket. Their free throw shooting is moderate, and they contribute modestly to assists and steals, but provide minimal interior presence with very low blocks and rebounds. With $4.99$ points and $5.69$ efficiency, they represent bench-level perimeter specialists. In other words, primarily guards who enter games to provide outside shooting but lack the overall impact or minutes of rotation starters.
+
+\textbf{Cluster 3: Balanced starters with strong contribution}
+
+This cluster represents high-quality rotation players who receive substantial playing time and contribute across multiple dimensions. The cluster shows a pretty balanced positional composition with guards ($52.9\%$), forwards ($41.2\%$) and centers ($5.9\%$), suggesting these are versatile players regardless of nominal position. They show balanced shooting profiles with moderate overall field goal percentage, acceptable two-point shooting, and strong three-point shooting, indicating versatility in shot selection. Their excellent free throw shooting reflects technical skill, and they contribute significantly to playmaking, rebounding, and defensive activity. With $11.3$ points and $13.3$ efficiency, these are the core rotation players: reliable, versatile contributors who can impact the game in multiple ways and handle significant minutes, though they are not the primary offensive options.
+
+\textbf{Cluster 4: Elite Performers}
+
+This cluster contains the highest-impact players, characterized by heavy playing time and dominance across virtually all statistical categories. Interestingly, this elite cluster contains only forwards, with no guards or centers. They excel in scoring, efficiency, and rebounding ($9.60$ total rebounds, with exceptional offensive rebounding at $3.20$), while also contributing significantly to playmaking ($4.30$ assists), steals, and blocks. Their shooting profile shows strong two-point percentage and good free throw shooting, though their three-point percentage is lower, likely because they operate in diverse scoring areas rather than specializing from distance. The elevated turnover rate reflects their high usage and ball-handling responsibilities rather than poor decision-making. These are elite players who carry their teams' offensive and defensive responsibilities, dominating statistical production across the board.
+
+######## laia
+
+\textbf{- Cluster 1: Low-impact perimeter players}
 This group gathers players with moderate playing time ($\approx 15$ minutes) and overall modest statistical contribution. Their scoring efficiency is average across FG, 2PT and 3PT percentages, and they provide limited rebounding ($\approx 2$ REB) and moderate assists ($\approx 1.5$ AST).
 They may represent role players, typically perimeter players who contribute in short bursts without being primary scoring options.
+
 
 \textbf{- Cluster 2: Efficient specialists with limited minutes}
 Players in this cluster show the best shooting percentages in the dataset, especially 2PT FG ($\approx 80%$), but they play the fewest minutes ($\approx 10$).
