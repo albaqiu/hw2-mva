@@ -675,9 +675,9 @@ To assess whether the classification accuracy of the discriminant function is me
 
 The Q statistic follows a chi-squared distribution with $k - 1$ degrees of freedom, where $k$ is the number of classes, and the test is conducted at a chosen significance level $\alpha$. A large value of Q provides evidence against the null hypothesis, indicating that the classifier performs significantly better than chance.
 
-In our case, the test shows a p-value of 0.48, we fail to reject the null hypothesis. This result indicates that, despite achieving a higher classification accuracy than the baseline, the observed improvement is not statistically significant when compared to random classification under equal class priors. 
+In our case, the test shows a p-value of  3.04e-09, therefore we reject the null hypothesis. This result indicates that the observed improvement in prediction is statistically significant when compared to random classification under equal class priors. 
 
-We also compute the critical value of the chi-squared distribution at the 5% significance level with $k - 1$ degrees of freedom. And since the observed Q statistic does not exceed this critical value, the test statistic does not fall within the rejection region, further confirming that the null hypothesis cannot be rejected.
+We also compute the critical value of the chi-squared distribution at the 5% significance level with $k - 1$ degrees of freedom. And since the observed Q statistic is greater than this critical value, the test statistic falls within the rejection region, further confirming that the null hypothesis is rejected.
 
 ```{r}
 n <- sum(tab2) # Total number of observations
@@ -685,7 +685,7 @@ k <- nrow(tab2) # Number of classes (number of rows in the confusion matrix)
 ntilde <- sum(diag(tab2)) # Number of correctly classified observations (sum of the diagonal)
 
 # Q statistic as defined in the lecture notes:
-Q <- (n - ntilde)^2 / (n * (k - 1)); Q
+Q <- (n - ntilde*k)^2 / (n * (k - 1)); Q
 
 # p-value using chi-squared distribution with (k - 1) degrees of freedom
 pvalue <- 1 - pchisq(Q, df = k - 1); pvalue
