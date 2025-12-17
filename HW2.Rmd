@@ -641,56 +641,48 @@ qda.fit$prior
 
 ### c) Make a table cross classifying real and predicted values and interpret correct classification rates
 
-The confusion matrix, where rows correspond to the true classes and columns to the predicted classes
+The confusion matrix is shown where rows correspond to the true classes and columns to the predicted classes.
 
 The confusion matrix reveals a clear performance disparity across positions, resulting in an overall Correct Classification Rate (CCR) of 75.5%. The model performs best when classifying Guards, correctly identifying 18 out of 20 observations, resulting in a class-specific CCR of 90%. In contrast, performance drops significantly for the frontcourt positions: Forwards were classified with 68.18% accuracy (15/22), while Centers proved the most difficult, with only 4 out of 7 correctly identified (57.14%), being misclassified as Forwards.
 
 These observed misclassifications are primarily driven by the variable selection, which restricted the model to MIN, FG, 2PT FG, and PF. By excluding critical discriminators like Rebounds (REB) and Assists (AST), the model lacks the necessary metrics to distinguish between roles. 
 
-Center vs. Forward Confusion: The model struggles to differentiate Centers from Forwards (3 Centers misclassified as Forwards) primarily due to the variable Personal Fouls (PF). Both positions exhibit similarly high foul distributions, and without Rebounds (REB) to distinguish the Centers' role in the paint, the discriminant function lacks the necessary separation, grouping them together based on their physical playstyle.
+  - Center vs. Forward Confusion: This confusion stems from the lack of statistical separation between the roles in the selected variables. As shown in the summary table, Centers and Forwards share very similar Field Goal values, making them indistinguishable by efficiency.
 
-Forward vs. Guard Confusion: Notably, 6 Forwards were erroneously classified as Guards. This is likely attributable to the heterogeneity of the Forward position. 'Small Forwards' or perimeter-oriented forwards often record lower Personal Fouls (PF) and high Minutes (MIN), mimicking the statistical profile of a Guard. Since the model excludes variables that would specifically identify a Forward's inside presence (like Rebounds) or a Guard's playmaking (like Assists), these low-foul Forwards fall into the Guard classification region solely based on their efficiency and playing time.
+  - Forward vs. Guard Confusion: The 6 misclassified Forwards are perimeter-oriented players whose statistics mimic those of a Guard. Comparing their values against the boxplots shows unusually low Personal Fouls and lower Field Goal values due to outside shooting. Without the Rebounds variable, the model interprets these stats (lacking inside dominance) as characteristic of Guards.
 
 Nevertheless, despite these variable limitations, the model represents a substantial improvement over random chance. The calculated baseline accuracy, based on class proportions, is only 38.86%. Therefore, the model's CCR of 75.5% confirms that the discriminant functions successfully capture meaningful patterns in the data, even without the full statistical profile of the players.
 
 
 ```{r}
-# 1. Obtener las predicciones (clases)
-# Cambia 'modelo_lda' por el nombre de tu objeto discriminante (ej: lda.fit)
-# Cambia 'datos_seleccionados' por el dataframe que usaste para el modelo
-predicciones <- predict(qda.fit, dfdisc)$class 
+pred <- predict(qda.fit, dfdisc)$class
 
-# 2. Crear una tabla para inspeccionar los fallos
-# Asumo que tus filas tienen los nombres de los jugadores (rownames)
-analisis_errores <- data.frame(
+error_analysis <- data.frame(
   Player = rownames(dfdisc),
   Actual = dfdisc$Position,
-  Predicted = predicciones,
-  PF = dfdisc$PF,          # Faltas (la clave de la confusión)
-  MIN = dfdisc$MIN,        # Minutos
-  FG = dfdisc$FG,          # Tiros de campo
-  TwoPt = dfdisc$TwoPt.FG  # O '2PT.FG' según como la hayas renombrado
+  Predicted = pred,
+  PF = dfdisc$PF,
+  MIN = dfdisc$MIN,
+  FG = dfdisc$FG,
+  TwoPt = dfdisc$TwoPt.FG
 )
 
-# 3. VER EL CASO 1: Forwards que parecen Guards (Esos 6 casos)
-cat("\n--- FORWARDS CONFUNDIDOS CON GUARDS ---\n")
-errores_F_to_G <- subset(analisis_errores, Actual == "Forward" & Predicted == "Guard")
-print(errores_F_to_G)
+cat("\n--- FORWARDS MISCLASSIFIED AS GUARDS ---\n")
+F_to_G <- subset(error_analysis, Actual == "Forward" & Predicted == "Guard")
+print(F_to_G)
 
-# Para entender por qué: Compara sus Faltas (PF) con la media de los Guards
 mean_PF_Guard <- mean(dfdisc$PF[dfdisc$Position == "Guard"])
-cat("\nMedia de Faltas (PF) de un Guard real:", round(mean_PF_Guard, 2), "\n")
-cat("Mira si los Forwards de arriba tienen PF cercanos a esa media.\n")
+cat("\nMean PF for true Guards:", round(mean_PF_Guard, 2), "\n")
 
-# 4. VER EL CASO 2: Centers que parecen Forwards (Esos 3 casos)
-cat("\n--- CENTERS CONFUNDIDOS CON FORWARDS ---\n")
-errores_C_to_F <- subset(analisis_errores, Actual == "Center" & Predicted == "Forward")
-print(errores_C_to_F)
+cat("\n--- CENTERS MISCLASSIFIED AS FORWARDS ---\n")
+C_to_F <- subset(error_analysis, Actual == "Center" & Predicted == "Forward")
+print(C_to_F)
 
-boxplot(dfdisc[,2]~dfdisc$Position, main="MIN") # no variance homogeneity in MIN
-boxplot(dfdisc[,3]~dfdisc$Position, main="FG") # no variance homogeneity in FG
-boxplot(dfdisc[,4]~dfdisc$Position, main="TwoPt.FG") # no variance homogeneity in TwoPt.FG
-boxplot(dfdisc[,5]~dfdisc$Position, main="PF") # no variance homogeneity in PF
+boxplot(MIN ~ Position, data = dfdisc, main = "MIN", xlab = "Position", ylab = "MIN")
+boxplot(FG ~ Position, data = dfdisc, main = "FG", xlab = "Position", ylab = "FG")
+boxplot(TwoPt.FG ~ Position, data = dfdisc, main = "TwoPt.FG", xlab = "Position", ylab = "TwoPt.FG")
+boxplot(PF ~ Position, data = dfdisc, main = "PF", xlab = "Position", ylab = "PF")
+
 ```
 
 
@@ -732,9 +724,9 @@ To assess whether the classification accuracy of the discriminant function is me
 
 The Q statistic follows a chi-squared distribution with $k - 1$ degrees of freedom, where $k$ is the number of classes, and the test is conducted at a chosen significance level $\alpha$. A large value of Q provides evidence against the null hypothesis, indicating that the classifier performs significantly better than chance.
 
-In our case, the test shows a p-value of  3.04e-09, therefore we reject the null hypothesis. This result indicates that the observed improvement in prediction is statistically significant when compared to random classification under equal class priors. 
+In our case, the test shows a p-value of $3.04e-09$, therefore we reject the null hypothesis. This result indicates that the observed improvement in prediction is statistically significant when compared to random classification under equal class priors. 
 
-We also compute the critical value of the chi-squared distribution at the 5% significance level with $k - 1$ degrees of freedom. And since the observed Q statistic is greater than this critical value, the test statistic falls within the rejection region, further confirming that the null hypothesis is rejected.
+We also compute the critical value of the chi-squared distribution at different significance levels with $k - 1$ degrees of freedom. since the observed Q statistic is greater than the critical value  at different significance levels, the test statistic falls within the rejection region, further confirming that the null hypothesis is rejected.
 
 ```{r}
 n <- sum(tab2) # Total number of observations
@@ -747,6 +739,12 @@ Q <- (n - ntilde*k)^2 / (n * (k - 1)); Q
 # p-value using chi-squared distribution with (k - 1) degrees of freedom
 pvalue <- 1 - pchisq(Q, df = k - 1); pvalue
 
+crit <- qchisq(0.9, df = k - 1); 
+Q > crit # TRUE
+
 crit <- qchisq(0.95, df = k - 1); 
-Q > crit # False
+Q > crit # TRUE
+
+crit <- qchisq(0.99, df = k - 1); 
+Q > crit # TRUE
 ```
