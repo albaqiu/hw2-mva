@@ -1,8 +1,9 @@
 ---
 title: "HW2_MVA"
 output:
-  pdf_document: default
+  word_document: default
   html_document: default
+  pdf_document: default
 date: "2025-12-14"
 ---
 
@@ -609,10 +610,10 @@ library(biotools)
 ?boxM
 
 boxM(dfdisc[,2:5],dfdisc$Position)
-boxplot(dfdisc[,2]~dfdisc$Position) # no variance homogeneity in MIN
-boxplot(dfdisc[,3]~dfdisc$Position) # no variance homogeneity in FG
-boxplot(dfdisc[,4]~dfdisc$Position) # no variance homogeneity in TwoPt.FG
-boxplot(dfdisc[,5]~dfdisc$Position) # no variance homogeneity in PF
+boxplot(dfdisc[,2]~dfdisc$Position, main="MIN") # no variance homogeneity in MIN
+boxplot(dfdisc[,3]~dfdisc$Position, main="FG") # no variance homogeneity in FG
+boxplot(dfdisc[,4]~dfdisc$Position, main="TwoPt.FG") # no variance homogeneity in TwoPt.FG
+boxplot(dfdisc[,5]~dfdisc$Position, main="PF") # no variance homogeneity in PF
 ```
 
 ```{r}
@@ -639,11 +640,59 @@ qda.fit$prior
 
 
 ### c) Make a table cross classifying real and predicted values and interpret correct classification rates
-The confusion matrix, where rows correspond to the true classes and columns to the predicted classes, shows that the model performs best when classifying Guards, with 18 correctly classified observations out of 20. The second best classified group is Forwards, with 15 correct predictions out of 22. In contrast, the model performs worst for Centers, correctly identifying only 4 out of 7 observations, with most misclassifications occurring as Forwards.
 
-The overall Correct Classification Rate (CCR) is 75.5%. The class-specific CCRs highlight the unequal performance across groups: Centers are the least accurately predicted class with a CCR of 57.14%, followed by Forwards with 68.18%, while Guards achieve the highest CCR at 90%.
+The confusion matrix, where rows correspond to the true classes and columns to the predicted classes
 
-For comparison, the baseline accuracy, computed from the class proportions, is 38.86%. This value represents the expected accuracy under random classification while preserving the observed class distribution. The model’s CCR therefore represents a substantial improvement over the baseline accuracy.
+The confusion matrix reveals a clear performance disparity across positions, resulting in an overall Correct Classification Rate (CCR) of 75.5%. The model performs best when classifying Guards, correctly identifying 18 out of 20 observations, resulting in a class-specific CCR of 90%. In contrast, performance drops significantly for the frontcourt positions: Forwards were classified with 68.18% accuracy (15/22), while Centers proved the most difficult, with only 4 out of 7 correctly identified (57.14%), being misclassified as Forwards.
+
+These observed misclassifications are primarily driven by the variable selection, which restricted the model to MIN, FG, 2PT FG, and PF. By excluding critical discriminators like Rebounds (REB) and Assists (AST), the model lacks the necessary metrics to distinguish between roles. 
+
+Center vs. Forward Confusion: The model struggles to differentiate Centers from Forwards (3 Centers misclassified as Forwards) primarily due to the variable Personal Fouls (PF). Both positions exhibit similarly high foul distributions, and without Rebounds (REB) to distinguish the Centers' role in the paint, the discriminant function lacks the necessary separation, grouping them together based on their physical playstyle.
+
+Forward vs. Guard Confusion: Notably, 6 Forwards were erroneously classified as Guards. This is likely attributable to the heterogeneity of the Forward position. 'Small Forwards' or perimeter-oriented forwards often record lower Personal Fouls (PF) and high Minutes (MIN), mimicking the statistical profile of a Guard. Since the model excludes variables that would specifically identify a Forward's inside presence (like Rebounds) or a Guard's playmaking (like Assists), these low-foul Forwards fall into the Guard classification region solely based on their efficiency and playing time.
+
+Nevertheless, despite these variable limitations, the model represents a substantial improvement over random chance. The calculated baseline accuracy, based on class proportions, is only 38.86%. Therefore, the model's CCR of 75.5% confirms that the discriminant functions successfully capture meaningful patterns in the data, even without the full statistical profile of the players.
+
+
+```{r}
+# 1. Obtener las predicciones (clases)
+# Cambia 'modelo_lda' por el nombre de tu objeto discriminante (ej: lda.fit)
+# Cambia 'datos_seleccionados' por el dataframe que usaste para el modelo
+predicciones <- predict(qda.fit, dfdisc)$class 
+
+# 2. Crear una tabla para inspeccionar los fallos
+# Asumo que tus filas tienen los nombres de los jugadores (rownames)
+analisis_errores <- data.frame(
+  Player = rownames(dfdisc),
+  Actual = dfdisc$Position,
+  Predicted = predicciones,
+  PF = dfdisc$PF,          # Faltas (la clave de la confusión)
+  MIN = dfdisc$MIN,        # Minutos
+  FG = dfdisc$FG,          # Tiros de campo
+  TwoPt = dfdisc$TwoPt.FG  # O '2PT.FG' según como la hayas renombrado
+)
+
+# 3. VER EL CASO 1: Forwards que parecen Guards (Esos 6 casos)
+cat("\n--- FORWARDS CONFUNDIDOS CON GUARDS ---\n")
+errores_F_to_G <- subset(analisis_errores, Actual == "Forward" & Predicted == "Guard")
+print(errores_F_to_G)
+
+# Para entender por qué: Compara sus Faltas (PF) con la media de los Guards
+mean_PF_Guard <- mean(dfdisc$PF[dfdisc$Position == "Guard"])
+cat("\nMedia de Faltas (PF) de un Guard real:", round(mean_PF_Guard, 2), "\n")
+cat("Mira si los Forwards de arriba tienen PF cercanos a esa media.\n")
+
+# 4. VER EL CASO 2: Centers que parecen Forwards (Esos 3 casos)
+cat("\n--- CENTERS CONFUNDIDOS CON FORWARDS ---\n")
+errores_C_to_F <- subset(analisis_errores, Actual == "Center" & Predicted == "Forward")
+print(errores_C_to_F)
+
+boxplot(dfdisc[,2]~dfdisc$Position, main="MIN") # no variance homogeneity in MIN
+boxplot(dfdisc[,3]~dfdisc$Position, main="FG") # no variance homogeneity in FG
+boxplot(dfdisc[,4]~dfdisc$Position, main="TwoPt.FG") # no variance homogeneity in TwoPt.FG
+boxplot(dfdisc[,5]~dfdisc$Position, main="PF") # no variance homogeneity in PF
+```
+
 
 ```{r}
 # Group predictions
@@ -664,9 +713,17 @@ classrate
 # CCR among groups
 diag(prop.table(tab2, 1))
 
-# Prediction accuracy p1^2+p^2
+# Prediction accuracy p1^2+p2^2+p3^2
 qda.fit$prior[1]^2 + qda.fit$prior[2]^2+qda.fit$prior[3]^2
 ```
+MIN, FG, TwoPt.FG, and PF
+
+els forwards com poden defensar a tothom son els que fan mes faltes (poden defensar als centers q com son mes gran faran faltes per pararlos, i els altres que com els forwards son mes rapids q ells)
+
+fan moltes faltes per defensar als guards de laltre equip i per parar als centers de lequip contrari
+
+
+
 
 
 ### d) Test whether the classification is done by chance using Q statistic
