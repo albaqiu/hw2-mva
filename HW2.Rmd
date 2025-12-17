@@ -645,7 +645,7 @@ The confusion matrix is shown where rows correspond to the true classes and colu
 
 The confusion matrix reveals a clear performance disparity across positions, resulting in an overall Correct Classification Rate (CCR) of 75.5%. The model performs best when classifying Guards, correctly identifying 18 out of 20 observations, resulting in a class-specific CCR of 90%. In contrast, performance drops significantly for the frontcourt positions: Forwards were classified with 68.18% accuracy (15/22), while Centers proved the most difficult, with only 4 out of 7 correctly identified (57.14%), being misclassified as Forwards.
 
-These observed misclassifications are primarily driven by the variable selection, which restricted the model to MIN, FG, 2PT FG, and PF. By excluding critical discriminators like Rebounds (REB) and Assists (AST), the model lacks the necessary metrics to distinguish between roles. 
+These observed misclassifications are primarily driven by the variable selection, which restricted the model to MIN, FG, 2PT FG, and PF. By excluding critical discriminators like Rebounds (REB) and Assists (AST), the model lacks the necessary metrics to distinguish between roles. The following conclusions are extracted from the analysis of the misclassified players: 
 
   - Center vs. Forward Confusion: This confusion stems from the lack of statistical separation between the roles in the selected variables. As shown in the summary table, Centers and Forwards share very similar Field Goal values, making them indistinguishable by efficiency.
 
